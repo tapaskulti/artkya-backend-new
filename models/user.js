@@ -76,12 +76,21 @@ const userSchema = new mongoose.Schema(
         ref: "art",
       },
     ],
-    // wishlist: [
+    // wishlist: 
     //   {
     //     type: ObjectId,
-    //     ref: "art",
+    //     ref: "wishlist",
     //   },
-    // ],
+    // cart: 
+    //   {
+    //     type: ObjectId,
+    //     ref: "cart",
+    //   },
+    // order: 
+    //   {
+    //     type: ObjectId,
+    //     ref: "order",
+    //   },
   },
   { timestamps: true }
 );

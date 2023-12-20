@@ -7,7 +7,16 @@ const artSchema = new mongoose.Schema(
       type: String,
       trim: "true",
     },
-    arts: [],
+    arts: [
+      {
+        id: {
+          type: String,
+        },
+        secure_url: {
+          type: String,
+        },
+      },
+    ],
     category: {
       type: String,
       default: "Painting",
@@ -30,6 +39,12 @@ const artSchema = new mongoose.Schema(
     depth: {
       type: String,
     },
+    price: {
+      type: Number,
+    },
+    discountedPrice: {
+        type: Number,
+      },
     keywords: [{ type: String }],
     description: {
       type: String,
