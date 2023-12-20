@@ -1,0 +1,45 @@
+const mongoose = require("mongoose");
+const ObjectId = mongoose.Schema.Types.ObjectId;
+
+const artSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      trim: "true",
+    },
+    arts: [],
+    category: {
+      type: String,
+      default: "Painting",
+    },
+    subject: {
+      type: String,
+    },
+    year: {
+      type: String,
+    },
+    medium: [{ type: String }],
+    materials: [{ type: String }],
+    styles: [{ type: String }],
+    width: {
+      type: String,
+    },
+    height: {
+      type: String,
+    },
+    depth: {
+      type: String,
+    },
+    keywords: [{ type: String }],
+    description: {
+      type: String,
+    },
+    artist: {
+      type: ObjectId,
+      ref: "user",
+    },
+  },
+  { timestamps: true }
+);
+
+module.exports = mongoose.model("art", artSchema);
