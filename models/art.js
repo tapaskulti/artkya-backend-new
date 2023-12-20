@@ -43,8 +43,8 @@ const artSchema = new mongoose.Schema(
       type: Number,
     },
     discountedPrice: {
-        type: Number,
-      },
+      type: Number,
+    },
     keywords: [{ type: String }],
     description: {
       type: String,
