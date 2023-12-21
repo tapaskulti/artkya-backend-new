@@ -45,6 +45,16 @@ const userSchema = new mongoose.Schema(
     country: {
       type: String,
     },
+    artistDesignation: {
+      type: String,
+      enum: [
+        "ARTKYA_ART_CATLOG",
+        "INSIDE_THE_STUDIO",
+        "RISING_STARS",
+        "ONE_TO_WATCH",
+        "THE_OTHER_ART_FAIR",
+      ],
+    },
     refresh_token: {
       type: String,
     },
@@ -75,21 +85,22 @@ const userSchema = new mongoose.Schema(
         ref: "art",
       },
     ],
-    wishlist: 
-      {
-        type: ObjectId,
-        ref: "wishlist",
-      },
-    cart: 
-      {
-        type: ObjectId,
-        ref: "cart",
-      },
-    order: 
-      {
-        type: ObjectId,
-        ref: "order",
-      },
+    wishlist: {
+      type: ObjectId,
+      ref: "wishlist",
+    },
+    cart: {
+      type: ObjectId,
+      ref: "cart",
+    },
+    order: {
+      type: ObjectId,
+      ref: "order",
+    },
+    collection: {
+      type: ObjectId,
+      ref: "collection",
+    },
   },
   { timestamps: true }
 );
