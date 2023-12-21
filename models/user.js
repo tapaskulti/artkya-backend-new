@@ -43,8 +43,7 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
     country: {
-      type: Boolean,
-      default: false,
+      type: String,
     },
     refresh_token: {
       type: String,
