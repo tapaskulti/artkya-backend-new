@@ -15,7 +15,7 @@ exports.createCart = async (req, res) => {
         });
     }
     req.body.userId = userId;
-    const createCart = await cartModel.create();
+    const createCart = await cartModel.create(req.body);
 
     return res.status(201).send({
       success: true,

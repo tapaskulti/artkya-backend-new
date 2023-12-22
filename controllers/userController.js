@@ -89,7 +89,7 @@ exports.registerUser = async (req, res) => {
         return res.status(201).send({
           success: true,
           message: "User Created Successfully",
-          // data: user,
+          data: user,
         });
       } else {
         return res.status(400).send({ message: "user not found" });

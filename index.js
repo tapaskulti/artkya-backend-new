@@ -52,9 +52,9 @@ app.use(
 
 // import routes
 app.use("/api/v1/user", require("./routes/user"));
-app.use("/api/v1/art", require("./routes/art"));
+// app.use("/api/v1/art", require("./routes/art"));
 app.use("/api/v1/cart", require("./routes/cart"));
-app.use("/api/v1/collection", require("./routes/collection"));
+// app.use("/api/v1/collection", require("./routes/collection"));
 app.use("/api/v1/wishlist", require("./routes/wishlist"));
 
 
