@@ -28,7 +28,7 @@ exports.registerUser = async (req, res) => {
       if (!firstName || !lastName || !email || !password) {
         return res
           .status(400)
-          .send({ status: false, message: "Please Enter all the Feilds" });
+          .send({ status: false, message: "Please Enter the Mandatory Feilds" });
       }
   
       if (!firstName) {
