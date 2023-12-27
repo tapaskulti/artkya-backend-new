@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const collectionSchema = new mongoose.Schema(
+const allCollectionSchema = new mongoose.Schema(
   {
     title: {
       type: String,
@@ -36,4 +36,4 @@ const collectionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("collection", collectionSchema);
+module.exports = mongoose.model("allCollection", allCollectionSchema);

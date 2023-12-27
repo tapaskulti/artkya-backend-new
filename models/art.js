@@ -7,16 +7,15 @@ const artSchema = new mongoose.Schema(
       type: String,
       trim: "true",
     },
-    arts: [
-      {
-        id: {
-          type: String,
-        },
-        secure_url: {
-          type: String,
-        },
+    arts: [{ type: ObjectId, ref: "image" }],
+    thumbnail: {
+      id: {
+        type: String,
       },
-    ],
+      secure_url: {
+        type: String,
+      },
+    },
     category: {
       type: String,
       default: "Painting",
