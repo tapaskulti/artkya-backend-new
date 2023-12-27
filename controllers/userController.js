@@ -60,7 +60,7 @@ exports.registerUser = async (req, res) => {
         if (req.files.avatar) {
           profilePictureFile = await cloudinary.v2.uploader.upload(
             req.files.avatar.tempFilePath,
-            { folder: "ARTKYA_Images" }
+            { folder: "ARTKYA_Profile_Image" }
           );
         }
         console.log(profilePictureFile);

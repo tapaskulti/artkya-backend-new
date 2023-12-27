@@ -4,7 +4,7 @@ const cors = require("cors");
 require("dotenv").config();
 const morgan = require("morgan");
 const bodyParser = require("body-parser");
-// const cloudinary = require("cloudinary");
+const cloudinary = require("cloudinary");
 const fileUpload = require("express-fileupload");
 const connectWithMongodb = require("./config/db");
 
@@ -21,6 +21,12 @@ app.use(
     tempFileDir: "/tmp/",
   })
 );
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 connectWithMongodb();
 
@@ -52,7 +58,7 @@ app.use(
 
 // import routes
 app.use("/api/v1/user", require("./routes/user"));
-// app.use("/api/v1/art", require("./routes/art"));
+app.use("/api/v1/art", require("./routes/art"));
 app.use("/api/v1/cart", require("./routes/cart"));
 // app.use("/api/v1/collection", require("./routes/collection"));
 app.use("/api/v1/wishlist", require("./routes/wishlist"));
