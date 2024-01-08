@@ -238,3 +238,30 @@ exports.getAllUsers = async (req, res) => {
     return res.status(500).send({ success: false, message: error.message });
   };
 
+
+
+//logot
+exports.logOut = async (req, res) => {
+  try {
+    const { email, contactNumber } = req.query;
+
+    if (email) {
+      await UserModel.findOneAndUpdate(
+        {
+          email: email,
+        },
+        {
+          refresh_token: undefined,
+          refresh_token_expiry: undefined,
+        }
+      );
+    }
+
+    return res
+      .status(200)
+      .send({ success: true, message: "logged out successfully" });
+  } catch (error) {
+    return res.status(500).send({ success: false, message: error.message });
+  }
+};
+

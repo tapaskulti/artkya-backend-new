@@ -8,10 +8,8 @@ const wishListSchema = new mongoose.Schema(
     },
     arts: [
       {
-        productId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "art",
-        },
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "art",
       },
     ],
     totalItems: {

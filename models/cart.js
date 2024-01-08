@@ -8,27 +8,20 @@ const cartSchema = new mongoose.Schema(
     },
     arts: [
       {
-        productId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "art",
-        },
-        quantity: { 
-            type: Number, 
-            default:1
-         },
-         shippingCost: {
-            type: Number,
-          },
+        type:mongoose.Schema.Types.ObjectId,
+        ref: "art",
       },
     ],
     totalPrice: {
       type: Number,
+      default: 0,
     },
     totalItems: {
       type: Number,
+      default: 0,
     },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Cart", cartSchema);
+module.exports = mongoose.model("cart", cartSchema);

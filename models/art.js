@@ -1,13 +1,18 @@
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Schema.Types.ObjectId;
 
-const artSchema = new mongoose.Schema(
+const artDetailsSchema = new mongoose.Schema(
   {
     title: {
       type: String,
       trim: "true",
     },
-    arts: [{ type: ObjectId, ref: "image" }],
+    arts: [{ type: ObjectId, ref: "artWork" }],
+    // art: [
+    //   {
+    //     type: String,
+    //   },
+    // ],
     thumbnail: {
       id: {
         type: String,
@@ -56,4 +61,4 @@ const artSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("art", artSchema);
+module.exports = mongoose.model("artDetails", artDetailsSchema);

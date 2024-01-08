@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Schema.Types.ObjectId;
 
-const imageSchema = new mongoose.Schema(
+const artWorkSchema = new mongoose.Schema(
   {
     art: {
       id: {
@@ -12,11 +12,15 @@ const imageSchema = new mongoose.Schema(
       },
     },
     artist: {
-        type: ObjectId,
-        ref: "user",
-      },
+      type: ObjectId,
+      ref: "user",
+    },
+    artDetails: {
+      type: ObjectId,
+      ref: "user",
+    },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model("image", imageSchema);
+module.exports = mongoose.model("artWork", artWorkSchema);
