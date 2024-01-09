@@ -29,13 +29,16 @@ exports.createCart = async (req, res) => {
 
 exports.addToCart = async (req, res) => {
   try {
-    const { artId, userId, productCost } = req.query;
-    let totalItems, totalCost;
+    const { artId, userId ,artPrice} = req.query;
+    let totalItems
     const findCart = await cartModel.findOne({ userId })
-    .populate("userId")
-    // .populate("arts")
+    // .populate("userId")
+    .populate({
+      path:"arts",
+      // select:{_id:1,price:1}
+    })
 
-    if (findCart?.arts.includes(artId)) {
+    if (findCart?.arts.toString().includes(artId.toString())) {
       return res.status(400).send({
         success: false,
         message: "Art Already Present In Cart",
@@ -47,6 +50,15 @@ exports.addToCart = async (req, res) => {
     totalItems = await findCart.arts.length;  
 
     findCart.totalItems = totalItems;
+
+    // findCart?.arts?.map((singleArt)=>{
+    //   console.log("price----->",singleArt);
+    //   totalCost === totalCost+singleArt?.price
+    //   console.log("totalCost----->",totalCost);
+    // })
+
+
+    findCart.totalPrice = findCart.totalPrice + artPrice
 
     console.log(findCart, totalItems);
 
@@ -66,7 +78,7 @@ exports.addToCart = async (req, res) => {
 // Remove Items From Cart
 exports.removeFromCart = async (req, res) => {
   try {
-    const { artId, userId } = req.query;
+    const { artId, userId , artPrice} = req.query;
 
     const findCart = await cartModel.findOne({ userId });
 
@@ -80,6 +92,7 @@ exports.removeFromCart = async (req, res) => {
 
     console.log(totalItems);
 
+    findCart.totalPrice = findCart.totalPrice - artPrice
     await findCart.save();
     return res.status(200).send({
       success: true,
@@ -91,3 +104,20 @@ exports.removeFromCart = async (req, res) => {
   }
 };
 
+// Get Cart Of A Certain User
+
+exports.cartByUserId = async (req, res) => {
+  try {
+    const {userId } = req.query;
+
+    const findCart = await cartModel.findOne({ userId })
+    .populate("arts")
+
+    return res.status(200).send({
+      success: true,
+      data: findCart,
+    });
+  } catch (error) {
+    return res.status(500).send({ success: false, message: error.message });
+  }
+};

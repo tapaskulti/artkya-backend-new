@@ -92,3 +92,22 @@ exports.removeFromWishList = async (req, res) => {
     return res.status(500).send({ success: false, message: error.message });
   }
 };
+
+
+// Get WishList Of A Certain User
+
+exports.wishlistByUserId = async (req, res) => {
+  try {
+    const {userId } = req.query;
+
+    const findCart = await wishlistModel.findOne({ userId })
+    .populate("arts")
+
+    return res.status(200).send({
+      success: true,
+      data: findCart,
+    });
+  } catch (error) {
+    return res.status(500).send({ success: false, message: error.message });
+  }
+};
