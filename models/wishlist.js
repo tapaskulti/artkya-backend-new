@@ -9,7 +9,7 @@ const wishListSchema = new mongoose.Schema(
     arts: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "art",
+        ref: "artDetails",
       },
     ],
     totalItems: {

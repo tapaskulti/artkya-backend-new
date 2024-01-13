@@ -19,14 +19,13 @@ const allCollectionSchema = new mongoose.Schema(
     },
     arts: [
       {
-        productId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "art",
-        },
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "artDetails",
       },
     ],
     totalItems: {
       type: Number,
+      default:0
     },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
