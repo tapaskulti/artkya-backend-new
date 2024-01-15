@@ -68,7 +68,7 @@ exports.addToWishlist = async (req, res) => {
 exports.removeFromWishList = async (req, res) => {
   try {
     const { artId, userId } = req.query;
-
+    let totalItems;
     const findWishlist = await wishlistModel.findOne({ userId });
 
     findWishlist.arts = findWishlist.arts.filter((art) => {
