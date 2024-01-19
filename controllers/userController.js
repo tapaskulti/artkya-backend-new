@@ -265,3 +265,8 @@ exports.logOut = async (req, res) => {
   }
 };
 
+
+// Convert User to Artist
+// Forget Password
+// Reset Password
+

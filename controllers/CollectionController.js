@@ -4,8 +4,8 @@ const collectionModel = require("../models/collection")
     exports.createCollection = (req,res)=>{
         try {
             const{title,description,type,visibility} = req.body
-
             
+
             
         } catch (error) {
             return res.status(500).send({ success: false, message: error.message });

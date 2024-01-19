@@ -5,6 +5,7 @@ const artWorkModel = require("../models/artWork");
 exports.createArt = async (req, res) => {
   try {
     let uploadedImage;
+    let thumbnailFile;
 
     const creatingArt = await artDetailModel.create(req.body);
 
@@ -36,6 +37,31 @@ exports.createArt = async (req, res) => {
         }
       });
     }
+
+    if (req.files.thumbnail) {
+      thumbnailFile = await cloudinary.v2.uploader.upload(
+        req.files.thumbnail.tempFilePath,
+        { folder: "Arts_Images" }
+      );
+    }
+
+    console.log("thumbnail------->", req.files.thumbnail);
+    console.log("thumbnailFile------->", thumbnailFile);
+    
+    const imageThumbnail = thumbnailFile && {
+      id: thumbnailFile.public_id,
+      secure_url: thumbnailFile.secure_url,
+    };
+
+
+    if(imageThumbnail){
+      await artDetailModel.findOneAndUpdate(
+        { _id: creatingArt?._id },
+        { thumbnail: imageThumbnail}
+      );
+    }
+
+
     return res.status(201).send({
       success: true,
       message: "Art Created Successfully",
