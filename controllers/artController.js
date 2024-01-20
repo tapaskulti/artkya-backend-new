@@ -47,20 +47,18 @@ exports.createArt = async (req, res) => {
 
     console.log("thumbnail------->", req.files.thumbnail);
     console.log("thumbnailFile------->", thumbnailFile);
-    
+
     const imageThumbnail = thumbnailFile && {
       id: thumbnailFile.public_id,
       secure_url: thumbnailFile.secure_url,
     };
 
-
-    if(imageThumbnail){
+    if (imageThumbnail) {
       await artDetailModel.findOneAndUpdate(
         { _id: creatingArt?._id },
-        { thumbnail: imageThumbnail}
+        { thumbnail: imageThumbnail }
       );
     }
-
 
     return res.status(201).send({
       success: true,
@@ -101,12 +99,11 @@ exports.createArt = async (req, res) => {
 //   }
 // };
 
-
-
 // Get All Arts
 exports.getAllArt = async (req, res) => {
   try {
-    const allArts = await artWorkModel.find();
+    const allArts = await artDetailModel.find()
+    // .select({arts:-1})
     if (allArts) {
       return res.status(200).send({ success: true, data: allArts });
     }
@@ -114,13 +111,12 @@ exports.getAllArt = async (req, res) => {
     return res.status(500).send({ success: false, message: error.message });
   }
 };
-
 
 // Get Art By Id
 exports.getArtById = async (req, res) => {
   try {
-    const{artID} = req.query
-    const allArts = await artWorkModel.find({_id:artID});
+    const { artID } = req.query;
+    const allArts = await artWorkModel.find({ _id: artID });
     if (allArts) {
       return res.status(200).send({ success: true, data: allArts });
     }
@@ -130,4 +126,4 @@ exports.getArtById = async (req, res) => {
 };
 
 
-
+// Searching By ART AND ARTIST
