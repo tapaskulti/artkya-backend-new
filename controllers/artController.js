@@ -5,6 +5,7 @@ const artWorkModel = require("../models/artWork");
 exports.createArt = async (req, res) => {
   try {
     let uploadedImage;
+    let thumbnailFile;
 
     const creatingArt = await artDetailModel.create(req.body);
 
@@ -36,6 +37,29 @@ exports.createArt = async (req, res) => {
         }
       });
     }
+
+    if (req.files.thumbnail) {
+      thumbnailFile = await cloudinary.v2.uploader.upload(
+        req.files.thumbnail.tempFilePath,
+        { folder: "Arts_Images" }
+      );
+    }
+
+    console.log("thumbnail------->", req.files.thumbnail);
+    console.log("thumbnailFile------->", thumbnailFile);
+
+    const imageThumbnail = thumbnailFile && {
+      id: thumbnailFile.public_id,
+      secure_url: thumbnailFile.secure_url,
+    };
+
+    if (imageThumbnail) {
+      await artDetailModel.findOneAndUpdate(
+        { _id: creatingArt?._id },
+        { thumbnail: imageThumbnail }
+      );
+    }
+
     return res.status(201).send({
       success: true,
       message: "Art Created Successfully",
@@ -75,12 +99,11 @@ exports.createArt = async (req, res) => {
 //   }
 // };
 
-
-
 // Get All Arts
 exports.getAllArt = async (req, res) => {
   try {
-    const allArts = await artWorkModel.find();
+    const allArts = await artDetailModel.find()
+    // .select({arts:-1})
     if (allArts) {
       return res.status(200).send({ success: true, data: allArts });
     }
@@ -88,13 +111,12 @@ exports.getAllArt = async (req, res) => {
     return res.status(500).send({ success: false, message: error.message });
   }
 };
-
 
 // Get Art By Id
 exports.getArtById = async (req, res) => {
   try {
-    const{artID} = req.query
-    const allArts = await artWorkModel.find({_id:artID});
+    const { artID } = req.query;
+    const allArts = await artWorkModel.find({ _id: artID });
     if (allArts) {
       return res.status(200).send({ success: true, data: allArts });
     }
@@ -104,4 +126,4 @@ exports.getArtById = async (req, res) => {
 };
 
 
-
+// Searching By ART AND ARTIST

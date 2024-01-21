@@ -53,6 +53,9 @@ const artDetailsSchema = new mongoose.Schema(
     description: {
       type: String,
     },
+    isFeatured:{
+      type:Boolean
+    },
     artist: {
       type: ObjectId,
       ref: "user",
