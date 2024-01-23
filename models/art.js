@@ -31,6 +31,9 @@ const artDetailsSchema = new mongoose.Schema(
     year: {
       type: String,
     },
+    orientation: {
+      type: String,
+    },
     medium: [{ type: String }],
     materials: [{ type: String }],
     styles: [{ type: String }],
