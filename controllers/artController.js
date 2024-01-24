@@ -61,16 +61,16 @@ exports.createArt = async (req, res) => {
       );
     }
 
-     res.status(201).send({
+    res.status(201).send({
       success: true,
       message: "Art Created Successfully",
     });
 
-
     // push art id in user Art
-    await userModel.findOneAndUpdate({_id:req.body.artist},{$push:{art:creatingArt._id}})
-
-
+    await userModel.findOneAndUpdate(
+      { _id: req.body.artist },
+      { $push: { art: creatingArt._id } }
+    );
   } catch (error) {
     return res.status(500).send({ success: false, message: error.message });
   }
@@ -109,7 +109,7 @@ exports.createArt = async (req, res) => {
 // Get All Arts
 exports.getAllArt = async (req, res) => {
   try {
-    const allArts = await artDetailModel.find()
+    const allArts = await artDetailModel.find();
     // .select({arts:-1})
     if (allArts) {
       return res.status(200).send({ success: true, data: allArts });
@@ -132,56 +132,108 @@ exports.getArtById = async (req, res) => {
   }
 };
 
-
 // Searching By ART AND ARTIST
 
-exports.getArtByName= async(req,res)=>{
+exports.getArtByName = async (req, res) => {
   try {
-    const{artByName}= req.query
-    let findArt
-    if(artByName){
+    const { artByName } = req.query;
+    let findArt;
+    if (artByName) {
       // findArt = await artDetailModel.aggregate([ { $match: { title: artByName} } ])
-      findArt = await artDetailModel.find({title:{$regex:artByName , $options: 'i' }})
+      findArt = await artDetailModel.find({
+        title: { $regex: artByName, $options: "i" },
+      });
     }
 
-    if(!findArt){
-      return res.status(400).send({success:false,message:"art not found"})
+    if (!findArt) {
+      return res.status(400).send({ success: false, message: "art not found" });
     }
 
-    return res.status(200).send({success:true,data:findArt})
-      
-
+    return res.status(200).send({ success: true, data: findArt });
   } catch (error) {
     return res.status(500).send({ success: false, message: error.message });
   }
-} 
+};
 
-
-exports.getArtByArtist = async(req,res)=>{
+exports.getArtByArtist = async (req, res) => {
   try {
-    const{artist}= req.query
-    let artByName,artByArtist
-    
-    console.log(artist.split(" ").join(""))
+    const { artist } = req.query;
+    let artByName, artByArtist;
 
-    const queryArtist = artist.split(" ").join("")
-    
-    const [firstName, lastName] = artist.split(' ');
+    console.log(artist.split(" ").join(""));
 
-    const  findUser = await userModel.find({
-      $and: [{ firstName }, { lastName }]
+    const queryArtist = artist.split(" ").join("");
 
-    })
-    console.log("findUser--->>",findUser)
+    const [firstName, lastName] = artist.split(" ");
 
-
-    
+    const findUser = await userModel.find({
+      $and: [{ firstName }, { lastName }],
+    });
+    console.log("findUser--->>", findUser);
   } catch (error) {
     return res.status(500).send({ success: false, message: error.message });
   }
-} 
+};
+
+// filter
+
+exports.filterArt = async (req, res) => {
+  try {
+    const {
+      style,
+      subject,
+      medium,
+      minPrice,
+      maxPrice,
+      material,
+      size,
+      orientation,
+      artistCountry,
+    } = req.query;
+
+    let query={}
+    console.log(req.query);
 
 
+    if (style && style.length > 0) {
+      query.styles = { $in: style };
+    }
 
-// filter 
+    if (subject) {
+      query.subject = { $in: subject };
+    }
 
+    if (minPrice&&minPrice) {
+      query.price = { $gte: minPrice, $lte: maxPrice };
+    }
+
+    if (medium && style.medium > 0) {
+      query.medium = { $in: medium };
+    }
+
+    if (material && style.material > 0) {
+      query.materials = { $in: material };
+    }
+
+    if (orientation && style.orientation > 0) {
+      query.orientation = { $in: orientation };
+    }
+
+
+    console.log("query==========>",query);
+
+    const filteredArts = await artDetailModel.find(query)
+
+
+    console.log("filteredArts==========>",filteredArts);
+
+    if(filteredArts.length==0){
+      return res.status(400).send({success:false,message:"No art found"})
+    }
+
+    return res.status(200).send({success:true,data:filteredArts})
+
+  } catch (error) {
+    return res.status(500).send({ success: false, message: error.message });
+  }
+};
