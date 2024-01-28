@@ -8,5 +8,5 @@ router.route("/getAllArt").get(getAllArt)
 router.route("/getArtById").get(getArtById)
 router.route("/getArtByName").get(getArtByName)
 router.route("/getArtByArtist").get(getArtByArtist)
-router.route("/filterArt").get(filterArt)
+router.route("/filterArt").post(filterArt)
 module.exports = router;

@@ -189,10 +189,22 @@ exports.filterArt = async (req, res) => {
       size,
       orientation,
       artistCountry,
-    } = req.query;
+      featuredartist
+    } = req.body
 
     let query={}
-    console.log(req.query);
+    console.log("req.body-------=>>>",
+    style,
+    subject,
+    medium,
+    minPrice,
+    maxPrice,
+    material,
+    size,
+    orientation,
+    artistCountry,
+    featuredartist
+    )
 
 
     if (style && style.length > 0) {
@@ -220,12 +232,12 @@ exports.filterArt = async (req, res) => {
     }
 
 
-    console.log("query==========>",query);
+    // console.log("query==========>",query);
 
     const filteredArts = await artDetailModel.find(query)
 
 
-    console.log("filteredArts==========>",filteredArts);
+    // console.log("filteredArts==========>",filteredArts);
 
     if(filteredArts.length==0){
       return res.status(400).send({success:false,message:"No art found"})
@@ -237,3 +249,8 @@ exports.filterArt = async (req, res) => {
     return res.status(500).send({ success: false, message: error.message });
   }
 };
+
+
+
+
+// sort
