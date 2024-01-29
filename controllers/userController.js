@@ -267,6 +267,16 @@ exports.logOut = async (req, res) => {
 
 
 // Convert User to Artist
+exports.userToArtist = async()=>{
+  try {
+    const{userId}=req.query
+    
+  } catch (error) {
+    return res.status(500).send({ success: false, message: error.message });
+  }
+}
 // Forget Password
+
 // Reset Password
+
 
