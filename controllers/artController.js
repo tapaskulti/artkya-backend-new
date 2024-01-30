@@ -107,13 +107,63 @@ exports.createArt = async (req, res) => {
 // };
 
 // Get All Arts
+// exports.getAllArt = async (req, res) => {
+//   console.log("get all art called");
+//   try {
+//     const allArts = await artDetailModel.find();
+//     // .select({arts:-1})
+//     if (allArts) {
+//       return res.status(200).send({ success: true, data: allArts });
+//     }
+//   } catch (error) {
+//     return res.status(500).send({ success: false, message: error.message });
+//   }
+// };
+
 exports.getAllArt = async (req, res) => {
   try {
-    const allArts = await artDetailModel.find();
-    // .select({arts:-1})
-    if (allArts) {
-      return res.status(200).send({ success: true, data: allArts });
+    let getAllArt;
+    // const { date, incresingPrice, decreasingPrice } = req.query;
+    const { criteria, searchCriteria, searchInput } = req.query;
+
+    console.log(criteria, searchCriteria, searchInput);
+
+    if (criteria === "newToOld" && searchCriteria === "none") {
+      getAllArt = await artDetailModel.find().sort({
+        createdAt: 1,
+      });
     }
+
+    if (criteria === "incresingPrice" && searchCriteria === "none") {
+      getAllArt = await artDetailModel.find().sort({
+        price: 1,
+      });
+    }
+
+    if (criteria === "decreasingPrice" && searchCriteria === "none") {
+      getAllArt = await artDetailModel.find().sort({
+        price: -1,
+      });
+    }
+
+    if (criteria === "none") {
+      getAllArt = await artDetailModel.find();
+    }
+
+    if (searchCriteria === "Art" && searchInput !== "") {
+      console.log("called");
+      getAllArt = await artDetailModel.find({
+        title: { $regex: searchInput, $options: "i" },
+      });
+    }
+
+    // if ((searchCriteria === "Artist" && searchInput!=="")) {
+    //   getAllArt = await artDetailModel.find({
+    //     // title: { $regex: artTitle, $options: "i" },
+    //   });
+    // }
+
+    return res.status(200).send({ success: true, data: getAllArt });
   } catch (error) {
     return res.status(500).send({ success: false, message: error.message });
   }
@@ -179,6 +229,8 @@ exports.getArtByArtist = async (req, res) => {
 
 exports.filterArt = async (req, res) => {
   try {
+    let filteredArts;
+    const { sortingCriteria } = req.query;
     const {
       style,
       subject,
@@ -189,23 +241,23 @@ exports.filterArt = async (req, res) => {
       size,
       orientation,
       artistCountry,
+      featuredartist,
+    } = req.body;
+
+    let query = {};
+    console.log(
+      "req.body-------=>>>",
+      style,
+      subject,
+      medium,
+      minPrice,
+      maxPrice,
+      material,
+      size,
+      orientation,
+      artistCountry,
       featuredartist
-    } = req.body
-
-    let query={}
-    console.log("req.body-------=>>>",
-    style,
-    subject,
-    medium,
-    minPrice,
-    maxPrice,
-    material,
-    size,
-    orientation,
-    artistCountry,
-    featuredartist
-    )
-
+    );
 
     if (style && style.length > 0) {
       query.styles = { $in: style };
@@ -215,7 +267,7 @@ exports.filterArt = async (req, res) => {
       query.subject = { $in: subject };
     }
 
-    if (minPrice&&minPrice) {
+    if (minPrice && minPrice) {
       query.price = { $gte: minPrice, $lte: maxPrice };
     }
 
@@ -231,26 +283,40 @@ exports.filterArt = async (req, res) => {
       query.orientation = { $in: orientation };
     }
 
-
     // console.log("query==========>",query);
 
-    const filteredArts = await artDetailModel.find(query)
+    filteredArts = await artDetailModel.find(query);
 
+    if (sortingCriteria === "newToOld") {
+      filteredArts = await artDetailModel.find(query).sort({
+        createdAt: 1,
+      });
+    }
+
+    if (sortingCriteria === "incresingPrice") {
+      filteredArts = await artDetailModel.find(query).sort({
+        price: 1,
+      });
+    }
+
+    if (sortingCriteria === "decreasingPrice") {
+      filteredArts = await artDetailModel.find(query).sort({
+        price: -1,
+      });
+    }
+
+    if (sortingCriteria === "none") {
+      filteredArts = await artDetailModel.find(query);
+    }
 
     // console.log("filteredArts==========>",filteredArts);
 
-    if(filteredArts.length==0){
-      return res.status(400).send({success:false,message:"No art found"})
+    if (filteredArts.length == 0) {
+      return res.status(400).send({ success: false, message: "No art found" });
     }
 
-    return res.status(200).send({success:true,data:filteredArts})
-
+    return res.status(200).send({ success: true, data: filteredArts });
   } catch (error) {
     return res.status(500).send({ success: false, message: error.message });
   }
 };
-
-
-
-
-// sort
