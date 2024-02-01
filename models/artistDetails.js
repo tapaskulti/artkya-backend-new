@@ -15,6 +15,20 @@ const artistDetailSchema = new mongoose.Schema(
     dob: {
       type: String,
     },
+    country: {
+      type: String,
+    },
+    
+    artistDesignation: {
+      type: String,
+      enum: [
+        "ARTKYA_ART_CATLOG",
+        "INSIDE_THE_STUDIO",
+        "RISING_STARS",
+        "ONE_TO_WATCH",
+        "THE_OTHER_ART_FAIR",
+      ],
+    },
   },
   { timestamps: true }
 );

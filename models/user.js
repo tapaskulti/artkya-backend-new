@@ -42,18 +42,9 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    country: {
-      type: String,
-    },
-    artistDesignation: {
-      type: String,
-      enum: [
-        "ARTKYA_ART_CATLOG",
-        "INSIDE_THE_STUDIO",
-        "RISING_STARS",
-        "ONE_TO_WATCH",
-        "THE_OTHER_ART_FAIR",
-      ],
+    adultContentView:{
+      type: Boolean,
+      default: false,
     },
     refresh_token: {
       type: String,
