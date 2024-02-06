@@ -59,6 +59,9 @@ const artDetailsSchema = new mongoose.Schema(
     isFeatured:{
       type:Boolean
     },
+    isAdultContent:{
+      type:Boolean
+    },
     artist: {
       type: ObjectId,
       ref: "user",
