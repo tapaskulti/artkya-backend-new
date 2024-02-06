@@ -3,6 +3,7 @@ const artDetailModel = require("../models/art");
 const artWorkModel = require("../models/artWork");
 const userModel = require("../models/user");
 
+
 exports.createArt = async (req, res) => {
   try {
     let uploadedImage;
@@ -173,10 +174,13 @@ exports.getAllArt = async (req, res) => {
 exports.getArtById = async (req, res) => {
   try {
     const { artID } = req.query;
-    const allArts = await artDetailModel.find({ _id: artID });
-    if (allArts) {
-      return res.status(200).send({ success: true, data: allArts });
+
+
+    const artDetails = await artDetailModel.findOne({ _id: artID });
+    if (!artDetails) {
+      return res.status(400).send({ success: false, message: "Art not found" });
     }
+    return res.status(200).send({ success: true, data: artDetails });
   } catch (error) {
     return res.status(500).send({ success: false, message: error.message });
   }
