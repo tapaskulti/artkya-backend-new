@@ -29,14 +29,15 @@ exports.createCart = async (req, res) => {
 
 exports.addToCart = async (req, res) => {
   try {
-    const { artId, userId ,artPrice} = req.query;
-    let totalItems
-    const findCart = await cartModel.findOne({ userId })
-    // .populate("userId")
-    .populate({
-      path:"arts",
-      // select:{_id:1,price:1}
-    })
+    const { artId, userId, artPrice } = req.query;
+    let totalItems;
+    const findCart = await cartModel
+      .findOne({ userId })
+      // .populate("userId")
+      .populate({
+        path: "arts",
+        // select:{_id:1,price:1}
+      });
 
     if (findCart?.arts.toString().includes(artId.toString())) {
       return res.status(400).send({
@@ -47,7 +48,7 @@ exports.addToCart = async (req, res) => {
       findCart?.arts.push(artId);
     }
 
-    totalItems = await findCart.arts.length;  
+    totalItems = await findCart.arts.length;
 
     findCart.totalItems = totalItems;
 
@@ -57,8 +58,7 @@ exports.addToCart = async (req, res) => {
     //   console.log("totalCost----->",totalCost);
     // })
 
-
-    findCart.totalPrice = findCart.totalPrice + artPrice
+    findCart.totalPrice = parseInt(findCart.totalPrice) + parseInt(artPrice);
 
     console.log(findCart, totalItems);
 
@@ -70,7 +70,7 @@ exports.addToCart = async (req, res) => {
       message: "Art Addded Successfully",
     });
   } catch (error) {
-    console.log(error)
+    console.log(error);
     return res.status(500).send({ success: false, message: error.message });
   }
 };
@@ -78,21 +78,31 @@ exports.addToCart = async (req, res) => {
 // Remove Items From Cart
 exports.removeFromCart = async (req, res) => {
   try {
-    const { artId, userId , artPrice} = req.query;
+    const { artId, userId, artPrice } = req.query;
+
+    console.log(artId, userId, artPrice);
 
     const findCart = await cartModel.findOne({ userId });
 
-    findCart.arts = findCart.arts.filter((art) => {
-      console.log(art.toString());
-      art.toString() !== artId.toString();
+    console.log(findCart.arts);
+
+    findCart.arts = findCart.arts.filter((singleArt) => {
+      console.log(singleArt.toString() == artId.toString());
+      return singleArt.toString() !== artId.toString();
     });
+
+    console.log(findCart.arts);
 
     totalItems = await findCart.arts.length;
     findCart.totalItems = totalItems;
 
     console.log(totalItems);
+    console.log(findCart.totalPrice);
 
-    findCart.totalPrice = findCart.totalPrice - artPrice
+    findCart.totalPrice = parseInt(findCart.totalPrice) - parseInt(artPrice);
+
+    console.log(findCart.totalPrice);
+
     await findCart.save();
     return res.status(200).send({
       success: true,
@@ -108,10 +118,9 @@ exports.removeFromCart = async (req, res) => {
 
 exports.cartByUserId = async (req, res) => {
   try {
-    const {userId } = req.query;
+    const { userId } = req.query;
 
-    const findCart = await cartModel.findOne({ userId })
-    .populate("arts")
+    const findCart = await cartModel.findOne({ userId }).populate("arts");
 
     return res.status(200).send({
       success: true,
