@@ -7,12 +7,10 @@ const artDetailsSchema = new mongoose.Schema(
       type: String,
       trim: "true",
     },
-    arts: [{ type: ObjectId, ref: "artWork" }],
-    // art: [
-    //   {
-    //     type: String,
-    //   },
-    // ],
+    // arts: [{ type: ObjectId, ref: "artWork" }],
+    art: [
+      Object
+    ],
     thumbnail: {
       id: {
         type: String,
