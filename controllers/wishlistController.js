@@ -101,7 +101,13 @@ exports.wishlistByUserId = async (req, res) => {
     const {userId } = req.query;
 
     const findCart = await wishlistModel.findOne({ userId })
-    .populate("arts")
+    .populate({
+      path:"arts",
+      options: {
+        skip: 5,
+        limit : 10
+    },
+    })
 
     return res.status(200).send({
       success: true,
