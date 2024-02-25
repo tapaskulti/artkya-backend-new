@@ -21,22 +21,24 @@ exports.createArt = async (req, res) => {
         console.log("uploadedImage------->", uploadedImage);
 
         if (uploadedImage) {
-          const creatingImage = await artWorkModel.create({
-            art: {
-              id: uploadedImage?.public_id,
-              secure_url: uploadedImage?.secure_url,
-            },
-            artist: req.body.artist,
-            artDetails: creatingArt?._id,
-          });
-
-          if (creatingImage) {
-            await artDetailModel.findOneAndUpdate(
-              { _id: creatingArt?._id },
-              { $push: { arts: creatingImage?._id } }
-            );
-          }
+          const updateImage = await artDetailModel.findOneAndUpdate(
+            { _id: creatingArt?._id },
+            {
+              $push: {
+                art: {
+                  id: uploadedImage?.public_id,
+                  secure_url: uploadedImage?.secure_url,
+                },
+              },
+            }
+          );
         }
+
+        res.status(201).send({
+          success: true,
+          message: "Art Created Successfully",
+        });
+        
       });
     }
 
@@ -45,6 +47,8 @@ exports.createArt = async (req, res) => {
         req.files.thumbnail.tempFilePath,
         { folder: "Arts_Images" }
       );
+    }else{
+      return res.status(400).send({message:"Thumbnail mot found"})
     }
 
     console.log("thumbnail------->", req.files.thumbnail);
@@ -62,15 +66,12 @@ exports.createArt = async (req, res) => {
       );
     }
 
-    res.status(201).send({
-      success: true,
-      message: "Art Created Successfully",
-    });
+    
 
     // push art id in user Art
     await userModel.findOneAndUpdate(
       { _id: req.body.artist },
-      { $push: { art: creatingArt._id } }
+      { $push: { art: creatingArt?._id } }
     );
   } catch (error) {
     return res.status(500).send({ success: false, message: error.message });
@@ -80,28 +81,71 @@ exports.createArt = async (req, res) => {
 // exports.createArt = async (req, res) => {
 //   try {
 //     let uploadedImage;
-//     console.log("req.files?.images------->", req.files?.images);
+//     let thumbnailFile;
+
+//     const creatingArt = await artDetailModel.create(req.body);
+
 //     if (req.files?.images) {
+//       console.log("req.files?.images------->", req.files?.images);
 //       req.files?.images?.forEach(async (singleImage) => {
 //         uploadedImage = await cloudinary.v2.uploader.upload(
 //           singleImage.tempFilePath,
 //           { folder: "Arts_Images" }
 //         );
 //         console.log("uploadedImage------->", uploadedImage);
-//         const art = uploadedImage?.secure_url
 
 //         if (uploadedImage) {
-//           req.body.art = art;
-//           await artDetailModel.create(req.body);
-
-//           return res.status(201).send({
-//             success: true,
-//             message: "Art Created Successfully",
+//           const creatingImage = await artWorkModel.create({
+//             art: {
+//               id: uploadedImage?.public_id,
+//               secure_url: uploadedImage?.secure_url,
+//             },
+//             artist: req.body.artist,
+//             artDetails: creatingArt?._id,
 //           });
+
+//           if (creatingImage) {
+//             await artDetailModel.findOneAndUpdate(
+//               { _id: creatingArt?._id },
+//               { $push: { arts: creatingImage?._id } }
+//             );
+//           }
 //         }
 //       });
 //     }
-//     return res.status(400).send({ status: false, message: "Art Not Created" });
+
+//     if (req.files.thumbnail) {
+//       thumbnailFile = await cloudinary.v2.uploader.upload(
+//         req.files.thumbnail.tempFilePath,
+//         { folder: "Arts_Images" }
+//       );
+//     }
+
+//     console.log("thumbnail------->", req.files.thumbnail);
+//     console.log("thumbnailFile------->", thumbnailFile);
+
+//     const imageThumbnail = thumbnailFile && {
+//       id: thumbnailFile.public_id,
+//       secure_url: thumbnailFile.secure_url,
+//     };
+
+//     if (imageThumbnail) {
+//       await artDetailModel.findOneAndUpdate(
+//         { _id: creatingArt?._id },
+//         { thumbnail: imageThumbnail }
+//       );
+//     }
+
+//     res.status(201).send({
+//       success: true,
+//       message: "Art Created Successfully",
+//     });
+
+//     // push art id in user Art
+//     await userModel.findOneAndUpdate(
+//       { _id: req.body.artist },
+//       { $push: { art: creatingArt._id } }
+//     );
 //   } catch (error) {
 //     return res.status(500).send({ success: false, message: error.message });
 //   }

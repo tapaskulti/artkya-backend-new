@@ -7,12 +7,10 @@ const artDetailsSchema = new mongoose.Schema(
       type: String,
       trim: "true",
     },
-    arts: [{ type: ObjectId, ref: "artWork" }],
-    // art: [
-    //   {
-    //     type: String,
-    //   },
-    // ],
+    // arts: [{ type: ObjectId, ref: "artWork" }],
+    art: [
+      Object
+    ],
     thumbnail: {
       id: {
         type: String,
@@ -60,7 +58,12 @@ const artDetailsSchema = new mongoose.Schema(
       type:Boolean
     },
     isAdultContent:{
-      type:Boolean
+      type:Boolean,
+      default:false
+    },
+    wishlisted:{
+      type:Boolean,
+      default:false
     },
     artist: {
       type: ObjectId,
