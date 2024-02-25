@@ -78,7 +78,7 @@ exports.removeArtFromCollection = async (req, res) => {
 
     findCollection.arts = findCollection.arts.filter((art) => {
       console.log(art.toString());
-      art.toString() !== artId.toString();
+      return art.toString() !== artId.toString();
     });
 
     totalItems = await findCollection.arts.length;

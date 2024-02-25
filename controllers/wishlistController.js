@@ -1,4 +1,5 @@
 const wishlistModel = require("../models/wishlist");
+const ArtModel = require("../models/art");
 
 exports.createWishlist = async (req, res) => {
   try {
@@ -55,11 +56,20 @@ exports.addToWishlist = async (req, res) => {
     console.log(findWishlist);
     await findWishlist.save();
 
-    return res.status(200).send({
+    const artAdded = res.status(200).send({
       success: true,
       data: totalItems,
       message: "Art Addded Successfully",
     });
+
+    if (artAdded) {
+       await ArtModel.findOneAndUpdate(
+        { _id: artId },
+        { wishlisted: true },
+        { new: true }
+      );
+    }
+    return;
   } catch (error) {
     return res.status(500).send({ success: false, message: error.message });
   }
@@ -83,35 +93,54 @@ exports.removeFromWishList = async (req, res) => {
     console.log(totalItems);
 
     await findWishlist.save();
-    return res.status(200).send({
+
+    const artRemoved = res.status(200).send({
       success: true,
       data: totalItems,
       message: "Art Removed Successfully",
     });
+
+    if (artRemoved) {
+      return await ArtModel.findOne(
+        { _id: artId },
+        { wishlisted: false },
+        { new: true }
+      );
+    }
+    return;
   } catch (error) {
     return res.status(500).send({ success: false, message: error.message });
   }
 };
 
-
 // Get WishList Of A Certain User
 
 exports.wishlistByUserId = async (req, res) => {
   try {
-    const {userId } = req.query;
+    const { userId } = req.query;
 
-    const findCart = await wishlistModel.findOne({ userId })
-    .populate({
-      path:"arts",
-      options: {
-        skip: 5,
-        limit : 10
-    },
-    })
+    const findWishlit = await wishlistModel.findOne({ userId }).populate({
+      path: "arts",
+      select: {
+        thumbnail: 1,
+        wishlisted: 1,
+        subject: 1,
+        title: 1,
+        price: 1,
+        width: 1,
+        depth: 1,
+        width: 1,
+        artist: 1,
+      },
+      // options: {
+      //   skip: 5,
+      //   limit: 10,
+      // },
+    });
 
     return res.status(200).send({
       success: true,
-      data: findCart,
+      data: findWishlit,
     });
   } catch (error) {
     return res.status(500).send({ success: false, message: error.message });

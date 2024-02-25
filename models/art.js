@@ -58,7 +58,12 @@ const artDetailsSchema = new mongoose.Schema(
       type:Boolean
     },
     isAdultContent:{
-      type:Boolean
+      type:Boolean,
+      default:false
+    },
+    wishlisted:{
+      type:Boolean,
+      default:false
     },
     artist: {
       type: ObjectId,
