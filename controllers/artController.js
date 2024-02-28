@@ -368,3 +368,32 @@ exports.filterArt = async (req, res) => {
     return res.status(500).send({ success: false, message: error.message });
   }
 };
+
+
+
+const { paymentsApi } = new Client({
+  // accessToken: process.env.SQUARE_ACCESS_TOKEN,
+  accessToken: process.env.SQUARE_ACCESS_TOKEN,
+  // "EAAAFIZzaMiA-vXlNC4ayqONtIY1_xC7pMZY-G57ZS0LjZPb5l6fgOZ6obiER2pz",
+  // environment: "sandbox",
+});
+
+exports.payment = async (req, res) => {
+  try {
+    console.log(req.body);
+
+    const { result } = await paymentsApi.createPayment({
+      idempotencyKey: randomUUID(),
+      sourceId: req.body.sourceId,
+      amountMoney: {
+        currency: "USD",
+        amount: req.query.amount,
+      },
+    });
+    console.log(result);
+
+   return res.status(200).json(result);
+  } catch (error) {
+    console.log(error);
+  }
+};

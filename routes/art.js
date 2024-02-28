@@ -16,5 +16,5 @@ router.route("/getArtById").get(getArtById);
 router.route("/getArtByName").get(getArtByName);
 router.route("/getArtByArtist").get(getArtByArtist);
 router.route("/filterArt").post(filterArt);
-// router.route("/sortArtBasedOnCategory").get(sortArtBasedOnCategory);
+router.route("/payment").get(payment);
 module.exports = router;
