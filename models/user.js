@@ -92,6 +92,9 @@ const userSchema = new mongoose.Schema(
       type: ObjectId,
       ref: "collection",
     },
+    Address:[
+      {type:Object}
+    ]
   },
   { timestamps: true }
 );

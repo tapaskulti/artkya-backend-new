@@ -7,6 +7,7 @@ const {
   getArtByArtist,
   filterArt,
   sortArtBasedOnCategory,
+  payment,
 } = require("../controllers/artController");
 const router = express.Router();
 
