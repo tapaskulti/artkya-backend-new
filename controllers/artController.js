@@ -1,6 +1,5 @@
 const cloudinary = require("cloudinary");
 const artDetailModel = require("../models/art");
-const artWorkModel = require("../models/artWork");
 const userModel = require("../models/user");
 const { Client } = require("square");
 
@@ -391,6 +390,35 @@ exports.payment = async (req, res) => {
 
    return res.status(200).json(result);
   } catch (error) {
-    console.log(error);
+    return res.status(500).send({ success: false, message: error.message });
   }
 };
+
+// update art
+exports.updateArt = async (req, res) => {
+try {
+  const artDetail = await ArtModel.findById({_id:req.query.artId});
+
+  if (!artDetail) {
+   return res.status(400).send("Art doesn't exist");
+  }
+
+  const updatedArt = await artDetailModel.findByIdAndUpdate({_id:req.query.artId}, req.body);
+
+ return res.status(200).send({ success:true,data:updatedArt });
+} catch (error) {
+  return res.status(500).send({ success: false, message: error.message });
+}  
+};
+
+
+// delete art
+exports.deleteArt = async (req, res) => {
+  try {
+   await ArtModel.findByIdAndDelete({_id:req.query.artId})
+    return res.status(200).send("Art Deleted");
+  } catch (err) {
+    return res.status(500).send({ success: false, message: error.message });
+  }
+};
+

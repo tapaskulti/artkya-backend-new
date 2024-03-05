@@ -7,10 +7,7 @@ const artDetailsSchema = new mongoose.Schema(
       type: String,
       trim: "true",
     },
-    // arts: [{ type: ObjectId, ref: "artWork" }],
-    art: [
-      Object
-    ],
+    art: [Object],
     thumbnail: {
       id: {
         type: String,
@@ -44,8 +41,9 @@ const artDetailsSchema = new mongoose.Schema(
     depth: {
       type: String,
     },
-    price: {
-      type: Number,
+    priceDetails: {
+      price: { type: Number },
+      currency: { type: String },
     },
     discountedPrice: {
       type: Number,
@@ -54,20 +52,24 @@ const artDetailsSchema = new mongoose.Schema(
     description: {
       type: String,
     },
-    isFeatured:{
-      type:Boolean
+    isFeatured: {
+      type: Boolean,
     },
-    isAdultContent:{
-      type:Boolean,
-      default:false
+    isAdultContent: {
+      type: Boolean,
+      default: false,
     },
-    wishlisted:{
-      type:Boolean,
-      default:false
+    wishlisted: {
+      type: Boolean,
+      default: false,
     },
     artist: {
       type: ObjectId,
       ref: "user",
+    },
+    original: {
+      type: Boolean,
+      default: true,
     },
   },
   { timestamps: true }

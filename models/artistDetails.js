@@ -18,8 +18,10 @@ const artistDetailSchema = new mongoose.Schema(
     country: {
       type: String,
     },
-    
-    artistDesignation: {
+    featuredArtist: {
+      type: Boolean,
+    },
+    artistFeaturedDesignation: {
       type: String,
       enum: [
         "ARTKYA_ART_CATLOG",

@@ -263,6 +263,22 @@ exports.userToArtist = async () => {
     return res.status(500).send({ success: false, message: error.message });
   }
 };
+
+// update Address
+exports.updateUserAddress = async (req, res) => {
+  try {
+    const { newAddress } = req.body;
+    const updateUserAddress = await UserModel.findOneAndUpdate(
+      { _id: req.query.userId },
+      { $push: { address: newAddress } }
+    );
+
+    return res.status(200).send({ success: true, data: updateUserAddress });
+  } catch (error) {
+    return res.status(500).send({ success: false, message: error.message });
+  }
+};
+
 // Forget Password
 
 // Reset Password

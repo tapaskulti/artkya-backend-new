@@ -92,7 +92,7 @@ const userSchema = new mongoose.Schema(
       type: ObjectId,
       ref: "collection",
     },
-    Address:[
+    address:[
       {type:Object}
     ]
   },
