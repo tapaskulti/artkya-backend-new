@@ -42,7 +42,7 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    adultContentView:{
+    adultContentView: {
       type: Boolean,
       default: false,
     },
@@ -92,9 +92,8 @@ const userSchema = new mongoose.Schema(
       type: ObjectId,
       ref: "collection",
     },
-    address:[
-      {type:Object}
-    ]
+    shippingAddress: [{ type: Object }],
+    billingAddress: [{ type: Object }],
   },
   { timestamps: true }
 );

@@ -267,10 +267,10 @@ exports.userToArtist = async () => {
 // update Address
 exports.updateUserAddress = async (req, res) => {
   try {
-    const { newAddress } = req.body;
-    const updateUserAddress = await UserModel.findOneAndUpdate(
+    // const { newAddress } = req.body;
+    const updateUserAddress = await User.findOneAndUpdate(
       { _id: req.query.userId },
-      { $push: { address: newAddress } }
+      { $push: { shippingAddress: req.body } }
     );
 
     return res.status(200).send({ success: true, data: updateUserAddress });

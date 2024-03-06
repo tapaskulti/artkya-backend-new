@@ -223,9 +223,12 @@ exports.getArtById = async (req, res) => {
     const { artID } = req.query;
 
 
-    const artDetails = await artDetailModel.findOne({ _id: artID });
+    const artDetails = await artDetailModel.findOne({ _id: artID })
+    .populate({
+      path:"artist"
+    })
     if (!artDetails) {
-      return res.status(400).send({ success: false, message: "Art not found" });
+      return res.status(400).send({ success: false, message: "Art not found" })
     }
     return res.status(200).send({ success: true, data: artDetails });
   } catch (error) {

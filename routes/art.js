@@ -21,4 +21,5 @@ router.route("/filterArt").post(filterArt);
 router.route("/deleteArt").delete(deleteArt);
 router.route("/updateArt").patch(updateArt);
 router.route("/payment").get(payment);
+
 module.exports = router;
