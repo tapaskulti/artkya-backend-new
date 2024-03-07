@@ -55,6 +55,9 @@ const artDetailsSchema = new mongoose.Schema(
     isFeatured: {
       type: Boolean,
     },
+    isPublished: {
+      type: Boolean,
+    },
     isAdultContent: {
       type: Boolean,
       default: false,
