@@ -31,6 +31,10 @@ const artistDetailSchema = new mongoose.Schema(
         "THE_OTHER_ART_FAIR",
       ],
     },
+    artistNotes: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "artistNotes",
+    },
   },
   { timestamps: true }
 );
