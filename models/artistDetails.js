@@ -18,6 +18,15 @@ const artistDetailSchema = new mongoose.Schema(
     country: {
       type: String,
     },
+    isVerified: {
+      type: Boolean,
+    },
+    isArtApprovalReq: {
+      type: Boolean,
+    },
+    isActive: {
+      type: Boolean,
+    },
     featuredArtist: {
       type: Boolean,
     },
