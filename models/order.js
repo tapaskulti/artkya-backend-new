@@ -15,7 +15,7 @@ const orderSchema = new mongoose.Schema(
     paymentMode: {
       type: String,
     },
-    // to check the order is within return poliecy
+    // to check the order is within return policy
     isOpenOrder: {
       type: Object,
     },
@@ -26,6 +26,10 @@ const orderSchema = new mongoose.Schema(
     artistId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "artistDetails",
+    },
+    artType :{
+      type: String,      
+      enum: ["Original","Print"],
     },
     returnable: {
       type: Boolean,

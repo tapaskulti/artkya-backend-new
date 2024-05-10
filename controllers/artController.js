@@ -14,6 +14,8 @@ exports.createArt = async (req, res) => {
 
     const creatingArt = await artDetailModel.create(req.body);
 
+   console.log( req.files?.imagesss)
+
     if (req.files?.images) {
       console.log("req.files?.images------->", req.files?.images);
       req.files?.images?.forEach(async (singleImage) => {
@@ -37,7 +39,7 @@ exports.createArt = async (req, res) => {
           );
         }
 
-        res.status(201).send({
+        return res.status(201).send({
           success: true,
           message: "Art Created Successfully",
         });
@@ -406,7 +408,7 @@ try {
    return res.status(400).send("Art doesn't exist");
   }
 
-  const updatedArt = await artDetailModel.findByIdAndUpdate({_id:req.query.artId}, req.body);
+  const updatedArt = await artDetailModel.findByIdAndUpdate({_id:req.query?.artId}, req.body);
 
  return res.status(200).send({ success:true,data:updatedArt });
 } catch (error) {

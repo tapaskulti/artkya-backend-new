@@ -6,6 +6,30 @@ const artistDetailSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "user",
     },
+    profile: {
+      id: {
+        type: String,
+      },
+      secure_url: {
+        type: String,
+      },
+    },
+    coverPhoto: {
+      id: {
+        type: String,
+      },
+      secure_url: {
+        type: String,
+      },
+    },
+    studioImage: {
+      id: {
+        type: String,
+      },
+      secure_url: {
+        type: String,
+      },
+    },
     info: {
       type: String,
     },
