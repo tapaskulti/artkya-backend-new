@@ -14,8 +14,6 @@ exports.createArt = async (req, res) => {
 
     const creatingArt = await artDetailModel.create(req.body);
 
-   console.log( req.files?.imagesss)
-
     if (req.files?.images) {
       console.log("req.files?.images------->", req.files?.images);
       req.files?.images?.forEach(async (singleImage) => {

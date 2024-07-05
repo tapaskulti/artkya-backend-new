@@ -67,6 +67,10 @@ const artDetailsSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    InQueue:{
+      type: Boolean,
+      default: false,
+    },
     artist: {
       type: ObjectId,
       ref: "user",
