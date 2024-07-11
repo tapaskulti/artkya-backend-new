@@ -9,10 +9,12 @@ const {
   payment,
   updateArt,
   deleteArt,
+  createDraft,
 } = require("../controllers/artController");
 const router = express.Router();
 
 router.route("/createArt").post(createArt);
+router.route("/createDraft").post(createDraft);
 router.route("/getAllArt").get(getAllArt);
 router.route("/getArtById").get(getArtById);
 router.route("/getArtByName").get(getArtByName);

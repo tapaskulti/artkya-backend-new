@@ -1,7 +1,10 @@
 const cloudinary = require("cloudinary");
 const artDetailModel = require("../models/art");
+const draftModel = require("../models/draft");
 const userModel = require("../models/user");
 const { Client } = require("square");
+const crypto = require('crypto');
+
 
 const { paymentsApi } = new Client({
   // accessToken: process.env.SQUARE_ACCESS_TOKEN,
@@ -11,8 +14,10 @@ exports.createArt = async (req, res) => {
   try {
     let uploadedImage;
     let thumbnailFile;
-
+    console.log("req.body------->", req.body);
     const creatingArt = await artDetailModel.create(req.body);
+
+    
 
     if (req.files?.images) {
       console.log("req.files?.images------->", req.files?.images);
@@ -51,7 +56,7 @@ exports.createArt = async (req, res) => {
         { folder: "Arts_Images" }
       );
     }else{
-      return res.status(400).send({message:"Thumbnail mot found"})
+      return res.status(400).send({message:"Thumbnail not found"})
     }
 
     console.log("thumbnail------->", req.files.thumbnail);
@@ -81,92 +86,82 @@ exports.createArt = async (req, res) => {
   }
 };
 
-// exports.createArt = async (req, res) => {
-//   try {
-//     let uploadedImage;
-//     let thumbnailFile;
+exports.createDraft = async (req, res) => {
+  try {
+    let uploadedImage;
+    let thumbnailFile;
 
-//     const creatingArt = await artDetailModel.create(req.body);
+    // Generate a random number
+    const randomNumber = crypto.randomBytes(4).readUInt32BE(0);
 
-//     if (req.files?.images) {
-//       console.log("req.files?.images------->", req.files?.images);
-//       req.files?.images?.forEach(async (singleImage) => {
-//         uploadedImage = await cloudinary.v2.uploader.upload(
-//           singleImage.tempFilePath,
-//           { folder: "Arts_Images" }
-//         );
-//         console.log("uploadedImage------->", uploadedImage);
+    // Format the ID
+    const uniqueId = `DR-${randomNumber}`;
 
-//         if (uploadedImage) {
-//           const creatingImage = await artWorkModel.create({
-//             art: {
-//               id: uploadedImage?.public_id,
-//               secure_url: uploadedImage?.secure_url,
-//             },
-//             artist: req.body.artist,
-//             artDetails: creatingArt?._id,
-//           });
+    req.body.draftId = uniqueId
+    const creatingArt = await draftModel.create(req.body);
 
-//           if (creatingImage) {
-//             await artDetailModel.findOneAndUpdate(
-//               { _id: creatingArt?._id },
-//               { $push: { arts: creatingImage?._id } }
-//             );
-//           }
-//         }
-//       });
-//     }
+    if (req.files?.images) {
+      console.log("req.files?.images------->", req.files?.images);
+      req.files?.images?.forEach(async (singleImage) => {
+        uploadedImage = await cloudinary.v2.uploader.upload(
+          singleImage.tempFilePath,
+          { folder: "Arts_Images" }
+        );
+        console.log("uploadedImage------->", uploadedImage);
 
-//     if (req.files.thumbnail) {
-//       thumbnailFile = await cloudinary.v2.uploader.upload(
-//         req.files.thumbnail.tempFilePath,
-//         { folder: "Arts_Images" }
-//       );
-//     }
+        if (uploadedImage) {
+          const updateImage = await draftModel.findOneAndUpdate(
+            { _id: creatingArt?._id },
+            {
+              $push: {
+                art: {
+                  id: uploadedImage?.public_id,
+                  secure_url: uploadedImage?.secure_url,
+                },
+              },
+            }
+          );
+        }
 
-//     console.log("thumbnail------->", req.files.thumbnail);
-//     console.log("thumbnailFile------->", thumbnailFile);
+        return res.status(201).send({
+          success: true,
+          message: "Draft Created Successfully",
+        });
+        
+      });
+    }
 
-//     const imageThumbnail = thumbnailFile && {
-//       id: thumbnailFile.public_id,
-//       secure_url: thumbnailFile.secure_url,
-//     };
+    if (req.files?.thumbnail) {
+      thumbnailFile = await cloudinary.v2.uploader.upload(
+        req.files.thumbnail.tempFilePath,
+        { folder: "Arts_Images" }
+      );
+    }else{
+      return res.status(400).send({message:"Thumbnail mot found"})
+    }
 
-//     if (imageThumbnail) {
-//       await artDetailModel.findOneAndUpdate(
-//         { _id: creatingArt?._id },
-//         { thumbnail: imageThumbnail }
-//       );
-//     }
+    console.log("thumbnail------->", req.files.thumbnail);
+    console.log("thumbnailFile------->", thumbnailFile);
 
-//     res.status(201).send({
-//       success: true,
-//       message: "Art Created Successfully",
-//     });
+    const imageThumbnail = thumbnailFile && {
+      id: thumbnailFile.public_id,
+      secure_url: thumbnailFile.secure_url,
+    };
 
-//     // push art id in user Art
-//     await userModel.findOneAndUpdate(
-//       { _id: req.body.artist },
-//       { $push: { art: creatingArt._id } }
-//     );
-//   } catch (error) {
-//     return res.status(500).send({ success: false, message: error.message });
-//   }
-// };
+    if (imageThumbnail) {
+      await draftModel.findOneAndUpdate(
+        { _id: creatingArt?._id },
+        { thumbnail: imageThumbnail }
+      );
+    }
 
-// Get All Arts
-// exports.getAllArt = async (req, res) => {
-//   console.log("get all art called");
-//   try {
-//     const allArts = await artDetailModel.find();
-//     // .select({arts:-1})
-//     if (allArts) {
-//       return res.status(200).send({ success: true, data: allArts });
-//     }
-//   } catch (error) {
-//     return res.status(500).send({ success: false, message: error.message });
-//   }
-// };
+  } catch (error) {
+    return res.status(500).send({ success: false, message: error.message });
+  }
+};
+
+// updateDraft
+
 
 exports.getAllArt = async (req, res) => {
   try {

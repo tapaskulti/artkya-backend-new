@@ -1,0 +1,88 @@
+const mongoose = require("mongoose");
+const ObjectId = mongoose.Schema.Types.ObjectId;
+
+const draftSchema = new mongoose.Schema(
+  {
+    draftId:{
+        type: String,
+    },
+    activeTab:{
+        type: String,
+    },
+    title: {
+      type: String,
+      trim: "true",
+    },
+    art: [Object],
+    thumbnail: {
+      id: {
+        type: String,
+      },
+      secure_url: {
+        type: String,
+      },
+    },
+    category: {
+      type: String,
+      default: "Painting",
+    },
+    subject: {
+      type: String,
+    },
+    year: {
+      type: String,
+    },
+    orientation: {
+      type: String,
+    },
+    medium: [{ type: String }],
+    materials: [{ type: String }],
+    styles: [{ type: String }],
+    width: {
+      type: String,
+    },
+    height: {
+      type: String,
+    },
+    depth: {
+      type: String,
+    },
+    priceDetails: {
+      minPrice: { type: Number },
+      price: { type: Number },
+      currency: { type: String },
+    },
+    discountedPrice: {
+      type: Number,
+    },
+    keywords: [{ type: String }],
+    description: {
+      type: String,
+    },
+    isFeatured: {
+      type: Boolean,
+    },
+    isPublished: {
+      type: Boolean,
+    },
+    isAdultContent: {
+      type: Boolean,
+      default: false,
+    },
+    wishlisted: {
+      type: Boolean,
+      default: false,
+    },
+    InQueue:{
+      type: Boolean,
+      default: false,
+    },   
+    original: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  { timestamps: true }
+);
+
+module.exports = mongoose.model("draft", draftSchema);
