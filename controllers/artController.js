@@ -15,6 +15,11 @@ exports.createArt = async (req, res) => {
     let uploadedImage;
     let thumbnailFile;
     console.log("req.body------->", req.body);
+
+    // req.body.medium = JSON.parse(req.body?.medium);
+    // req.body.materials = JSON.parse(req.body?.materials);
+    // req.body.styles = JSON.parse(req.body?.styles);
+    // console.log("req.body------->", req.body);
     const creatingArt = await artDetailModel.create(req.body);
 
     
