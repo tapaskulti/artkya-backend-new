@@ -100,6 +100,9 @@ exports.removeFromCart = async (req, res) => {
     console.log(findCart.totalPrice);
 
     findCart.totalPrice = parseInt(findCart.totalPrice) - parseInt(artPrice);
+    if(findCart.totalPrice<0){
+      findCart.totalPrice = 0
+    }
 
     console.log(findCart.totalPrice);
 

@@ -33,13 +33,23 @@ const artistDetailSchema = new mongoose.Schema(
     info: {
       type: String,
     },
-    education: [{ type: String }],
-    exibition: [{ type: String }],
-    events: [{ type: String }],
+    // education: [{ type: String }],
+    education: { type: String },
+    // exibition: [{ type: String }],
+    exibition: { type: String },
+    // events: [{ type: String }],
+    events: { type: String },
+
     dob: {
       type: String,
     },
     country: {
+      type: String,
+    },
+    state: {
+      type: String,
+    },
+    city: {
       type: String,
     },
     isVerified: {
@@ -54,6 +64,9 @@ const artistDetailSchema = new mongoose.Schema(
     featuredArtist: {
       type: Boolean,
     },
+    printOption: {
+      type: String,
+    },
     artistFeaturedDesignation: {
       type: String,
       enum: [
@@ -64,10 +77,10 @@ const artistDetailSchema = new mongoose.Schema(
         "THE_OTHER_ART_FAIR",
       ],
     },
-    artistNotes: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "artistNotes",
-    },
+    // artistNotes: {
+    //   type: mongoose.Schema.Types.ObjectId,
+    //   ref: "artistNotes",
+    // },
   },
   { timestamps: true }
 );
