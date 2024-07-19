@@ -37,7 +37,7 @@ const allowedDomains = [
   // "http://localhost:5175",
 ];
 
-app.cors()
+app.use(cors())
 // app.use(
 //   cors({
 //     origin: function (origin, callback) {
