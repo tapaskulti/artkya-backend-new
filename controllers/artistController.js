@@ -1,9 +1,12 @@
 const Artist = require("../models/artistDetails");
+const User = require("../models/user");
 
 exports.createArtist = async (req, res) => {
   try {
-    const createnewArtist = await Artist.create(req.body);
+    const {userId,isArtist} = req.body
+    const createnewArtist = await Artist.create({userId:userId});
 
+    await User.findOneAndUpdate({_id:userId},{isArtist:isArtist})
     if (!createnewArtist) {
       return res
         .status(401)
