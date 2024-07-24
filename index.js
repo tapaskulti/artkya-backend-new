@@ -31,29 +31,31 @@ cloudinary.config({
 connectWithMongodb();
 
 const allowedDomains = [
-  "http://localhost:5174",
-  "http://localhost:5173",
-  "http://localhost:5175",
+  "*",
+  // "http://localhost:5174",
+  // "http://localhost:5173",
+  // "http://localhost:5175",
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-      if (allowedDomains.indexOf(origin) === -1) {
-        var msg =
-          "The CORS policy for this site does not " +
-          "allow access from the specified Origin.";
-        return callback(new Error(msg), false);
-      }
-      return callback(null, true);
-    },
-    credentials: true,
-    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-    preflightContinue: false,
-    optionsSuccessStatus: 200,
-  })
-);
+app.use(cors())
+// app.use(
+//   cors({
+//     origin: function (origin, callback) {
+//       if (!origin) return callback(null, true);
+//       if (allowedDomains.indexOf(origin) === -1) {
+//         var msg =
+//           "The CORS policy for this site does not " +
+//           "allow access from the specified Origin.";
+//         return callback(new Error(msg), false);
+//       }
+//       return callback(null, true);
+//     },
+//     credentials: true,
+//     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+//     preflightContinue: false,
+//     optionsSuccessStatus: 200,
+//   })
+// );
 
 
 // import routes
@@ -62,6 +64,7 @@ app.use("/api/v1/art", require("./routes/art"));
 app.use("/api/v1/cart", require("./routes/cart"));
 // app.use("/api/v1/collection", require("./routes/collection"));
 app.use("/api/v1/wishlist", require("./routes/wishlist"));
+app.use("/api/v1/artist", require("./routes/artist"));
 
 
 

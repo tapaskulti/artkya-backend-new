@@ -6,20 +6,68 @@ const artistDetailSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "user",
     },
+    profile: {
+      id: {
+        type: String,
+      },
+      secure_url: {
+        type: String,
+      },
+    },
+    coverPhoto: {
+      id: {
+        type: String,
+      },
+      secure_url: {
+        type: String,
+      },
+    },
+    studioImage: {
+      id: {
+        type: String,
+      },
+      secure_url: {
+        type: String,
+      },
+    },
     info: {
       type: String,
     },
-    education: [{ type: String }],
-    exibition: [{ type: String }],
-    events: [{ type: String }],
+    // education: [{ type: String }],
+    education: { type: String },
+    // exibition: [{ type: String }],
+    exibition: { type: String },
+    // events: [{ type: String }],
+    events: { type: String },
+
     dob: {
       type: String,
     },
     country: {
       type: String,
     },
-    
-    artistDesignation: {
+    state: {
+      type: String,
+    },
+    city: {
+      type: String,
+    },
+    isVerified: {
+      type: Boolean,
+    },
+    isArtApprovalReq: {
+      type: Boolean,
+    },
+    isActive: {
+      type: Boolean,
+    },
+    featuredArtist: {
+      type: Boolean,
+    },
+    printOption: {
+      type: String,
+    },
+    artistFeaturedDesignation: {
       type: String,
       enum: [
         "ARTKYA_ART_CATLOG",
@@ -29,6 +77,10 @@ const artistDetailSchema = new mongoose.Schema(
         "THE_OTHER_ART_FAIR",
       ],
     },
+    // artistNotes: {
+    //   type: mongoose.Schema.Types.ObjectId,
+    //   ref: "artistNotes",
+    // },
   },
   { timestamps: true }
 );

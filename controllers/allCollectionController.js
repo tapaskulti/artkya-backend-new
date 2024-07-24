@@ -98,3 +98,5 @@ exports.removeArtFromCollection = async (req, res) => {
     return res.status(500).send({ success: false, message: error.message });
   }
 };
+
+

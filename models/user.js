@@ -35,14 +35,14 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["ADMIN", "USER"],
+      enum: ["ADMIN", "USER","ARTIST","SUPERADMIN"],
       default: "USER",
     },
     isArtist: {
       type: Boolean,
       default: false,
     },
-    adultContentView:{
+    adultContentView: {
       type: Boolean,
       default: false,
     },
@@ -92,6 +92,8 @@ const userSchema = new mongoose.Schema(
       type: ObjectId,
       ref: "collection",
     },
+    shippingAddress: [{ type: Object }],
+    billingAddress: [{ type: Object }],
   },
   { timestamps: true }
 );

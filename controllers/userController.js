@@ -144,7 +144,7 @@ exports.login = async (req, res) => {
       );
     }
 
-    return res.send({
+    return res.status(200).send({
       success: true,
       refresh_token: refresh_Token,
       message: "Login Successful",
@@ -236,7 +236,7 @@ exports.logOut = async (req, res) => {
     const { email, contactNumber } = req.query;
 
     if (email) {
-      await UserModel.findOneAndUpdate(
+      await User.findOneAndUpdate(
         {
           email: email,
         },
@@ -263,6 +263,22 @@ exports.userToArtist = async () => {
     return res.status(500).send({ success: false, message: error.message });
   }
 };
+
+// update Address
+exports.updateUserAddress = async (req, res) => {
+  try {
+    // const { newAddress } = req.body;
+    const updateUserAddress = await User.findOneAndUpdate(
+      { _id: req.query.userId },
+      { $push: { shippingAddress: req.body } }
+    );
+
+    return res.status(200).send({ success: true, data: updateUserAddress });
+  } catch (error) {
+    return res.status(500).send({ success: false, message: error.message });
+  }
+};
+
 // Forget Password
 
 // Reset Password

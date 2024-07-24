@@ -1,8 +1,14 @@
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Schema.Types.ObjectId;
 
-const artDetailsSchema = new mongoose.Schema(
+const draftSchema = new mongoose.Schema(
   {
+    draftId:{
+        type: String,
+    },
+    activeTab:{
+        type: String,
+    },
     title: {
       type: String,
       trim: "true",
@@ -70,11 +76,7 @@ const artDetailsSchema = new mongoose.Schema(
     InQueue:{
       type: Boolean,
       default: false,
-    },
-    artist: {
-      type: ObjectId,
-      ref: "user",
-    },
+    },   
     original: {
       type: Boolean,
       default: true,
@@ -83,4 +85,4 @@ const artDetailsSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("artDetails", artDetailsSchema);
+module.exports = mongoose.model("draft", draftSchema);
