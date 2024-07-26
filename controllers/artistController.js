@@ -3,10 +3,10 @@ const User = require("../models/user");
 
 exports.createArtist = async (req, res) => {
   try {
-    const {userId,isArtist} = req.body
-    const createnewArtist = await Artist.create({userId:userId});
+    const { userId, isArtist } = req.body;
+    const createnewArtist = await Artist.create({ userId: userId });
 
-    await User.findOneAndUpdate({_id:userId},{isArtist:isArtist})
+    await User.findOneAndUpdate({ _id: userId }, { isArtist: isArtist });
     if (!createnewArtist) {
       return res
         .status(401)
@@ -46,8 +46,12 @@ exports.getArtistById = async (req, res) => {
 exports.updateArtistProfile = async (req, res) => {
   try {
     const { ArtistId } = req.query;
+
+    console.log("body", req.body);
+    console.log("ArtistId", ArtistId);
+
     const updateArtistDetails = await Artist.findOneAndUpdate(
-      { _id: ArtistId },
+      { userId: ArtistId },
       req.body,
       { new: true }
     );
@@ -57,7 +61,6 @@ exports.updateArtistProfile = async (req, res) => {
       message: "Artist Updated successfully",
       data: updateArtistDetails,
     });
-
   } catch (error) {
     return res.status(500).send({ success: false, message: error.message });
   }
