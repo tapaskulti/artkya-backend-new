@@ -6,7 +6,7 @@ const artistDetailSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "user",
     },
-    profile: {
+    profileImage: {
       id: {
         type: String,
       },
