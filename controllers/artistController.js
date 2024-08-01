@@ -1,12 +1,14 @@
 const Artist = require("../models/artistDetails");
+const Art = require("../models/art");
 const User = require("../models/user");
+const cloudinary = require("cloudinary");
 
 exports.createArtist = async (req, res) => {
   try {
-    const {userId,isArtist} = req.body
-    const createnewArtist = await Artist.create({userId:userId});
+    const { userId, isArtist } = req.body;
+    const createnewArtist = await Artist.create({ userId: userId });
 
-    await User.findOneAndUpdate({_id:userId},{isArtist:isArtist})
+    await User.findOneAndUpdate({ _id: userId }, { isArtist: isArtist });
     if (!createnewArtist) {
       return res
         .status(401)
@@ -25,7 +27,15 @@ exports.createArtist = async (req, res) => {
 exports.getArtistById = async (req, res) => {
   try {
     const { ArtistId } = req.query;
-    const getArtistDetails = await Artist.findOne({ _id: ArtistId });
+    const getArtistDetails = await Artist.findOne({
+      userId: ArtistId,
+    }).populate({
+      path: "userId",
+      select:{
+        firstName:1,
+        lastName:1
+      }
+    });
 
     if (!getArtistDetails) {
       return res
@@ -46,8 +56,12 @@ exports.getArtistById = async (req, res) => {
 exports.updateArtistProfile = async (req, res) => {
   try {
     const { ArtistId } = req.query;
+
+    console.log("body", req.body);
+    console.log("ArtistId", ArtistId);
+
     const updateArtistDetails = await Artist.findOneAndUpdate(
-      { _id: ArtistId },
+      { userId: ArtistId },
       req.body,
       { new: true }
     );
@@ -57,7 +71,90 @@ exports.updateArtistProfile = async (req, res) => {
       message: "Artist Updated successfully",
       data: updateArtistDetails,
     });
+  } catch (error) {
+    return res.status(500).send({ success: false, message: error.message });
+  }
+};
 
+exports.getAllArtByArtistId = async (req, res) => {
+  try {
+    const{ArtistId} = req.query
+    const getAllArt = await Art.find({artist:ArtistId})
+
+    return res.status(200).send({
+      success: true,
+      message: "All Art found successfully",
+      data: getAllArt,
+    });
+  } catch (error) {
+    return res.status(500).send({ success: false, message: error.message });
+  }
+};
+
+exports.updateProfileImages = async (req, res) => {
+  try {
+    const { ArtistId } = req.query;
+    let artistProfilePictureFile, artistCoverImageFile;
+    let artistStudioImageFile;
+
+    console.log("files===>", req.files);
+    if (req.files) {
+      if (req.files.avatar) {
+        artistProfilePictureFile = await cloudinary.v2.uploader.upload(
+          req.files.avatar.tempFilePath,
+          { folder: "Artist_Profile_Pictures" }
+        );
+      }
+
+      if (req.files.artistcoverPhoto) {
+        artistCoverImageFile = await cloudinary.v2.uploader.upload(
+          req.files.artistcoverPhoto.tempFilePath,
+          { folder: "Artist_Cover_Pictures" }
+        );
+      }
+
+      if (req.files.artistStudioImage) {
+        artistStudioImageFile = await cloudinary.v2.uploader.upload(
+          req.files.artistStudioImage.tempFilePath,
+          { folder: "Artist_Studio_Image" }
+        );
+      }
+
+      console.log(artistProfilePictureFile);
+      console.log(artistCoverImageFile);
+      console.log(artistStudioImageFile);
+    }
+
+    const profileImage = artistProfilePictureFile && {
+      id: artistProfilePictureFile.public_id,
+      secure_url: artistProfilePictureFile.secure_url,
+    };
+
+    const artistCoverImage = artistCoverImageFile && {
+      id: artistCoverImageFile.public_id,
+      secure_url: artistCoverImageFile.secure_url,
+    };
+
+    const artistStudioImage = artistStudioImageFile && {
+      id: artistStudioImageFile.public_id,
+      secure_url: artistStudioImageFile.secure_url,
+    };
+
+    const updatedImage = await Artist.findOneAndUpdate(
+      { userId: ArtistId },
+      { profileImage: profileImage },
+      { coverPhoto: artistCoverImage },
+      { studioImage: artistStudioImage },
+      { new: true }
+    );
+
+    if (updatedImage) {
+      return res.status(200).send({
+        success: true,
+        message: "Image Uploaded successfully",
+        data: updatedImage,
+      });
+    }
   } catch (error) {
     return res.status(500).send({ success: false, message: error.message });
   }
