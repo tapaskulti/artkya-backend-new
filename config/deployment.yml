@@ -38,8 +38,8 @@ spec:
 ---
 apiVersion: v1
 kind: Service
-# metadata:
-#   name: artkya-deploy-backend
+metadata:
+  name: artkya-deploy-backend
 #   annotations:
 #     service.beta.kubernetes.io/do-loadbalancer-certificate-id: ""
 #     service.beta.kubernetes.io/do-loadbalancer-ssl-passthrough: "true"
