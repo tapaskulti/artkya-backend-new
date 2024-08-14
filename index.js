@@ -28,6 +28,11 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+app.get("/",(req,res)=>{
+  console.log("Server Connected successfully")
+  res.send({message:"Server Connected successfully"})
+})
+
 connectWithMongodb();
 
 const allowedDomains = [
