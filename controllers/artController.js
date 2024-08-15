@@ -3,8 +3,7 @@ const artDetailModel = require("../models/art");
 const draftModel = require("../models/draft");
 const userModel = require("../models/user");
 const { Client } = require("square");
-const crypto = require('crypto');
-
+const crypto = require("crypto");
 
 const { paymentsApi } = new Client({
   // accessToken: process.env.SQUARE_ACCESS_TOKEN,
@@ -13,79 +12,74 @@ const { paymentsApi } = new Client({
 exports.createArt = async (req, res) => {
   try {
     let uploadedImage;
-    let thumbnailFile;
-    console.log("req.body------->", req.body);
+    console.log("req.body------->", req.body);  
+    
+    priceDetail = {
+      price: req.body?.price,
+      offerPrice: req.body?.offerPrice,
+    };
+    req.body.medium = JSON.parse(req.body?.medium);
+    req.body.materials = JSON.parse(req.body?.materials);
+    req.body.styles = JSON.parse(req.body?.styles);
+    req.body.priceDetails = priceDetail;
 
-    // req.body.medium = JSON.parse(req.body?.medium);
-    // req.body.materials = JSON.parse(req.body?.materials);
-    // req.body.styles = JSON.parse(req.body?.styles);
-    // console.log("req.body------->", req.body);
+
     const creatingArt = await artDetailModel.create(req.body);
 
-    
-
-    if (req.files?.images) {
-      console.log("req.files?.images------->", req.files?.images);
-      req.files?.images?.forEach(async (singleImage) => {
+    if (req.files?.images && Array.isArray(req.files.images)) {
+      const uploadPromises = req.files.images.map(async (singleImage) => {
         uploadedImage = await cloudinary.v2.uploader.upload(
           singleImage.tempFilePath,
           { folder: "Arts_Images" }
         );
-        console.log("uploadedImage------->", uploadedImage);
 
         if (uploadedImage) {
-          const updateImage = await artDetailModel.findOneAndUpdate(
-            { _id: creatingArt?._id },
+          await artDetailModel.findOneAndUpdate(
+            { _id: creatingArt._id },
             {
               $push: {
                 art: {
-                  id: uploadedImage?.public_id,
-                  secure_url: uploadedImage?.secure_url,
+                  id: uploadedImage.public_id,
+                  secure_url: uploadedImage.secure_url,
                 },
               },
             }
           );
         }
-
-        return res.status(201).send({
-          success: true,
-          message: "Art Created Successfully",
-        });
-        
       });
+
+      // Wait for all images to be uploaded before sending the response
+      await Promise.all(uploadPromises);
     }
 
     if (req.files.thumbnail) {
-      thumbnailFile = await cloudinary.v2.uploader.upload(
+      const thumbnailFile = await cloudinary.v2.uploader.upload(
         req.files.thumbnail.tempFilePath,
         { folder: "Arts_Images" }
       );
-    }else{
-      return res.status(400).send({message:"Thumbnail not found"})
-    }
 
-    console.log("thumbnail------->", req.files.thumbnail);
-    console.log("thumbnailFile------->", thumbnailFile);
+      const imageThumbnail = {
+        id: thumbnailFile.public_id,
+        secure_url: thumbnailFile.secure_url,
+      };
 
-    const imageThumbnail = thumbnailFile && {
-      id: thumbnailFile.public_id,
-      secure_url: thumbnailFile.secure_url,
-    };
-
-    if (imageThumbnail) {
       await artDetailModel.findOneAndUpdate(
-        { _id: creatingArt?._id },
+        { _id: creatingArt._id },
         { thumbnail: imageThumbnail }
       );
     }
 
-    
-
-    // push art id in user Art
+    // Push art id in user Art
     await userModel.findOneAndUpdate(
       { _id: req.body.artist },
-      { $push: { art: creatingArt?._id } }
+      { $push: { art: creatingArt._id } }
     );
+
+    res.status(201).send({
+      success: true,
+      message: "Art Created Successfully",
+    });
+
   } catch (error) {
     return res.status(500).send({ success: false, message: error.message });
   }
@@ -102,7 +96,7 @@ exports.createDraft = async (req, res) => {
     // Format the ID
     const uniqueId = `DR-${randomNumber}`;
 
-    req.body.draftId = uniqueId
+    req.body.draftId = uniqueId;
     const creatingArt = await draftModel.create(req.body);
 
     if (req.files?.images) {
@@ -132,7 +126,6 @@ exports.createDraft = async (req, res) => {
           success: true,
           message: "Draft Created Successfully",
         });
-        
       });
     }
 
@@ -141,8 +134,8 @@ exports.createDraft = async (req, res) => {
         req.files.thumbnail.tempFilePath,
         { folder: "Arts_Images" }
       );
-    }else{
-      return res.status(400).send({message:"Thumbnail mot found"})
+    } else {
+      return res.status(400).send({ message: "Thumbnail mot found" });
     }
 
     console.log("thumbnail------->", req.files.thumbnail);
@@ -159,14 +152,12 @@ exports.createDraft = async (req, res) => {
         { thumbnail: imageThumbnail }
       );
     }
-
   } catch (error) {
     return res.status(500).send({ success: false, message: error.message });
   }
 };
 
 // updateDraft
-
 
 exports.getAllArt = async (req, res) => {
   try {
@@ -222,13 +213,11 @@ exports.getArtById = async (req, res) => {
   try {
     const { artID } = req.query;
 
-
-    const artDetails = await artDetailModel.findOne({ _id: artID })
-    .populate({
-      path:"artist"
-    })
+    const artDetails = await artDetailModel.findOne({ _id: artID }).populate({
+      path: "artist",
+    });
     if (!artDetails) {
-      return res.status(400).send({ success: false, message: "Art not found" })
+      return res.status(400).send({ success: false, message: "Art not found" });
     }
     return res.status(200).send({ success: true, data: artDetails });
   } catch (error) {
@@ -375,8 +364,6 @@ exports.filterArt = async (req, res) => {
   }
 };
 
-
-
 exports.payment = async (req, res) => {
   try {
     console.log(req.body);
@@ -391,7 +378,7 @@ exports.payment = async (req, res) => {
     });
     console.log(result);
 
-   return res.status(200).json(result);
+    return res.status(200).json(result);
   } catch (error) {
     return res.status(500).send({ success: false, message: error.message });
   }
@@ -399,29 +386,30 @@ exports.payment = async (req, res) => {
 
 // update art
 exports.updateArt = async (req, res) => {
-try {
-  const artDetail = await ArtModel.findById({_id:req.query.artId});
+  try {
+    const artDetail = await ArtModel.findById({ _id: req.query.artId });
 
-  if (!artDetail) {
-   return res.status(400).send("Art doesn't exist");
+    if (!artDetail) {
+      return res.status(400).send("Art doesn't exist");
+    }
+
+    const updatedArt = await artDetailModel.findByIdAndUpdate(
+      { _id: req.query?.artId },
+      req.body
+    );
+
+    return res.status(200).send({ success: true, data: updatedArt });
+  } catch (error) {
+    return res.status(500).send({ success: false, message: error.message });
   }
-
-  const updatedArt = await artDetailModel.findByIdAndUpdate({_id:req.query?.artId}, req.body);
-
- return res.status(200).send({ success:true,data:updatedArt });
-} catch (error) {
-  return res.status(500).send({ success: false, message: error.message });
-}  
 };
-
 
 // delete art
 exports.deleteArt = async (req, res) => {
   try {
-   await ArtModel.findByIdAndDelete({_id:req.query.artId})
+    await ArtModel.findByIdAndDelete({ _id: req.query.artId });
     return res.status(200).send("Art Deleted");
   } catch (err) {
     return res.status(500).send({ success: false, message: error.message });
   }
 };
-
