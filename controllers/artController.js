@@ -10,25 +10,25 @@ const { paymentsApi } = new Client({
 });
 
 exports.createArt = async (req, res) => {
+  console.log("req.body------->", req.body);
+
+  priceDetail = {
+    price: req.body?.price,
+    offerPrice: req.body?.offerPrice,
+  };
+  req.body.medium = JSON.parse(req.body?.medium);
+  req.body.materials = JSON.parse(req.body?.materials);
+  req.body.styles = JSON.parse(req.body?.styles);
+  req.body.priceDetails = priceDetail;
+
   try {
-    let uploadedImage;
-    console.log("req.body------->", req.body);  
-    
-    priceDetail = {
-      price: req.body?.price,
-      offerPrice: req.body?.offerPrice,
-    };
-    req.body.medium = JSON.parse(req.body?.medium);
-    req.body.materials = JSON.parse(req.body?.materials);
-    req.body.styles = JSON.parse(req.body?.styles);
-    req.body.priceDetails = priceDetail;
-
-
     const creatingArt = await artDetailModel.create(req.body);
 
     if (req.files?.images && Array.isArray(req.files.images)) {
-      const uploadPromises = req.files.images.map(async (singleImage) => {
-        uploadedImage = await cloudinary.v2.uploader.upload(
+      for (let i = 0; i < req.files.images.length; i++) {
+        const singleImage = req.files.images[i];
+
+        const uploadedImage = await cloudinary.v2.uploader.upload(
           singleImage.tempFilePath,
           { folder: "Arts_Images" }
         );
@@ -41,15 +41,13 @@ exports.createArt = async (req, res) => {
                 art: {
                   id: uploadedImage.public_id,
                   secure_url: uploadedImage.secure_url,
+                  order: i, // You can optionally store the order/index
                 },
               },
             }
           );
         }
-      });
-
-      // Wait for all images to be uploaded before sending the response
-      await Promise.all(uploadPromises);
+      }
     }
 
     if (req.files.thumbnail) {
@@ -79,11 +77,12 @@ exports.createArt = async (req, res) => {
       success: true,
       message: "Art Created Successfully",
     });
-
   } catch (error) {
     return res.status(500).send({ success: false, message: error.message });
   }
 };
+
+
 
 exports.createDraft = async (req, res) => {
   try {
@@ -170,23 +169,51 @@ exports.getAllArt = async (req, res) => {
     if (criteria === "newToOld" && searchCriteria === "none") {
       getAllArt = await artDetailModel.find().sort({
         createdAt: 1,
-      });
+      })
+      .populate({
+        path:"artist",
+        select:{
+          firstName:1,
+          lastName:1
+        }
+      })
     }
 
     if (criteria === "incresingPrice" && searchCriteria === "none") {
       getAllArt = await artDetailModel.find().sort({
         price: 1,
-      });
+      })
+      .populate({
+        path:"artist",
+        select:{
+          firstName:1,
+          lastName:1
+        }
+      })
     }
 
     if (criteria === "decreasingPrice" && searchCriteria === "none") {
       getAllArt = await artDetailModel.find().sort({
         price: -1,
-      });
+      })
+      .populate({
+        path:"artist",
+        select:{
+          firstName:1,
+          lastName:1
+        }
+      })
     }
 
     if (criteria === "none") {
-      getAllArt = await artDetailModel.find();
+      getAllArt = await artDetailModel.find()
+      .populate({
+        path:"artist",
+        select:{
+          firstName:1,
+          lastName:1
+        }
+      })
     }
 
     if (searchCriteria === "Art" && searchInput !== "") {
