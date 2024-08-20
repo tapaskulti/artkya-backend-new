@@ -42,12 +42,13 @@ const artDetailsSchema = new mongoose.Schema(
       type: String,
     },
     priceDetails: {
-      minPrice: { type: Number },
-      price: { type: Number },
+      minPrice: { type: String },
+      price: { type: String },
+      offerPrice: { type: String },
       currency: { type: String },
     },
     discountedPrice: {
-      type: Number,
+      type: String,
     },
     keywords: [{ type: String }],
     description: {
