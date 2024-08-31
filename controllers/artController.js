@@ -440,3 +440,100 @@ exports.deleteArt = async (req, res) => {
     return res.status(500).send({ success: false, message: error.message });
   }
 };
+
+
+exports.newFilterArt = async (req, res) => {
+  try {
+    let filteredArts;
+    const { sortingCriteria, searchCriteria, searchInput } = req.query;
+    const {
+      style,
+      subject,
+      medium,
+      minPrice,
+      maxPrice,
+      material,
+      size,
+      orientation,
+      artistCountry,
+      featuredartist
+    } = req.body;
+
+    let query = {};
+
+    console.log("body==========>",req.body)
+
+    // Handle the body-based filters
+    if (style && style.length > 0) {
+      query.styles = { $in: style };
+    }
+
+    if (subject) {
+      query.subject = { $in: subject };
+    }
+
+    if (minPrice && maxPrice) {
+      query.price = { $gte: minPrice, $lte: maxPrice };
+    }
+
+    if (medium && medium.length > 0) {
+      query.medium = { $in: medium };
+    }
+
+    if (material && material.length > 0) {
+      query.materials = { $in: material };
+    }
+
+    if (orientation && orientation.length > 0) {
+      query.orientation = { $in: orientation };
+    }
+
+    if (artistCountry && artistCountry.length > 0) {
+      // query.artistCountry = artistCountry;
+      query.artistCountry = { $in: artistCountry };
+    }
+
+    if (featuredartist && featuredartist.length > 0) {
+      // query.featuredArtist = featuredartist;
+      query.featuredArtist = { $in: featuredartist };
+    }
+
+    // Handle search by Art title or Artist name
+    if (searchCriteria === "Art" && searchInput) {
+      query.title = { $regex: searchInput, $options: "i" };
+    } else if (searchCriteria === "Artist" && searchInput) {
+      query.$or = [
+        { "artist.firstName": { $regex: searchInput, $options: "i" } },
+        { "artist.lastName": { $regex: searchInput, $options: "i" } },
+      ];
+    }
+
+    // Perform the query with the optional sorting
+    filteredArts = await artDetailModel.find(query);
+
+    console.log("filteredArts==========>",filteredArts)
+    // If no filters or searches were applied, return all arts
+    if (!searchCriteria && !style && !subject && !medium && !minPrice && !maxPrice && !material && !size && !orientation && !artistCountry && !featuredartist) {
+      filteredArts = await artDetailModel.find().populate({
+        path: "artist",
+        select: { firstName: 1, lastName: 1 },
+      });
+    } else {
+      filteredArts = await artDetailModel
+        .find(query)
+        .sort(sortingCriteria === "newToOld" ? { createdAt:1 } : sortingCriteria === "increasingPrice" ? { price: 1 } : sortingCriteria === "decreasingPrice" ? { price: -1 } : {})
+        .populate({
+          path: "artist",
+          select: { firstName: 1, lastName: 1 },
+        });
+    }
+
+    if (filteredArts.length === 0) {
+      return res.status(400).send({ success: false, message: "No art found" });
+    }
+
+    return res.status(200).send({ success: true, data: filteredArts });
+  } catch (error) {
+    return res.status(500).send({ success: false, message: error.message });
+  }
+};
