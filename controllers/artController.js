@@ -473,7 +473,7 @@ exports.newFilterArt = async (req, res) => {
     }
 
     if (minPrice && maxPrice) {
-      query.price = { $gte: minPrice, $lte: maxPrice };
+      query["priceDetails.price"] = { $gte: minPrice, $lte: maxPrice };
     }
 
     if (medium && medium.length > 0) {
@@ -507,6 +507,7 @@ exports.newFilterArt = async (req, res) => {
         { "artist.lastName": { $regex: searchInput, $options: "i" } },
       ];
     }
+    
 
     // Perform the query with the optional sorting
     filteredArts = await artDetailModel.find(query);
@@ -521,7 +522,7 @@ exports.newFilterArt = async (req, res) => {
     } else {
       filteredArts = await artDetailModel
         .find(query)
-        .sort(sortingCriteria === "newToOld" ? { createdAt:1 } : sortingCriteria === "increasingPrice" ? { price: 1 } : sortingCriteria === "decreasingPrice" ? { price: -1 } : {})
+        .sort(sortingCriteria === "newToOld" ? { createdAt:-1 } : sortingCriteria === "priceLowHigh" ? { price: 1 } : sortingCriteria === "priceHighLow" ? { price: -1 } : {})
         .populate({
           path: "artist",
           select: { firstName: 1, lastName: 1 },
