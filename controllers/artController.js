@@ -82,8 +82,6 @@ exports.createArt = async (req, res) => {
   }
 };
 
-
-
 exports.createDraft = async (req, res) => {
   try {
     let uploadedImage;
@@ -167,53 +165,58 @@ exports.getAllArt = async (req, res) => {
     console.log(criteria, searchCriteria, searchInput);
 
     if (criteria === "newToOld" && searchCriteria === "none") {
-      getAllArt = await artDetailModel.find().sort({
-        createdAt: 1,
-      })
-      .populate({
-        path:"artist",
-        select:{
-          firstName:1,
-          lastName:1
-        }
-      })
+      getAllArt = await artDetailModel
+        .find()
+        .sort({
+          createdAt: 1,
+        })
+        .populate({
+          path: "artist",
+          select: {
+            firstName: 1,
+            lastName: 1,
+          },
+        });
     }
 
     if (criteria === "incresingPrice" && searchCriteria === "none") {
-      getAllArt = await artDetailModel.find().sort({
-        price: 1,
-      })
-      .populate({
-        path:"artist",
-        select:{
-          firstName:1,
-          lastName:1
-        }
-      })
+      getAllArt = await artDetailModel
+        .find()
+        .sort({
+          price: 1,
+        })
+        .populate({
+          path: "artist",
+          select: {
+            firstName: 1,
+            lastName: 1,
+          },
+        });
     }
 
     if (criteria === "decreasingPrice" && searchCriteria === "none") {
-      getAllArt = await artDetailModel.find().sort({
-        price: -1,
-      })
-      .populate({
-        path:"artist",
-        select:{
-          firstName:1,
-          lastName:1
-        }
-      })
+      getAllArt = await artDetailModel
+        .find()
+        .sort({
+          price: -1,
+        })
+        .populate({
+          path: "artist",
+          select: {
+            firstName: 1,
+            lastName: 1,
+          },
+        });
     }
 
     if (criteria === "none") {
-      getAllArt = await artDetailModel.find()
-      .populate({
-        path:"artist",
-        select:{
-          firstName:1,
-          lastName:1
-        }
-      })
+      getAllArt = await artDetailModel.find().populate({
+        path: "artist",
+        select: {
+          firstName: 1,
+          lastName: 1,
+        },
+      });
     }
 
     if (searchCriteria === "Art" && searchInput !== "") {
@@ -441,6 +444,136 @@ exports.deleteArt = async (req, res) => {
   }
 };
 
+// exports.newFilterArt = async (req, res) => {
+//   try {
+//     let filteredArts;
+//     const { sortingCriteria, searchCriteria, searchInput } = req.query;
+//     const {
+//       style,
+//       subject,
+//       medium,
+//       minPrice,
+//       maxPrice,
+//       material,
+//       size,
+//       orientation,
+//       artistCountry,
+//       featuredartist
+//     } = req.body;
+
+//     let query = {};
+
+//     console.log("body==========>",req.body)
+
+//     // Handle the body-based filters
+//     if (style && style.length > 0) {
+//       query.styles = { $in: style };
+//     }
+
+//     if (subject) {
+//       query.subject = { $in: subject };
+//     }
+
+//     if (minPrice && maxPrice) {
+//       query["priceDetails.price"] = { $gte: minPrice, $lte: maxPrice };
+//     }
+
+//     if (medium && medium.length > 0) {
+//       query.medium = { $in: medium };
+//     }
+
+//     if (material && material.length > 0) {
+//       query.materials = { $in: material };
+//     }
+
+//     if (orientation && orientation.length > 0) {
+//       query.orientation = { $in: orientation };
+//     }
+
+//     if (artistCountry && artistCountry.length > 0) {
+//       // query.artistCountry = artistCountry;
+//       query.artistCountry = { $in: artistCountry };
+//     }
+
+//     if (featuredartist && featuredartist.length > 0) {
+//       // query.featuredArtist = featuredartist;
+//       query.featuredArtist = { $in: featuredartist };
+//     }
+
+//      // Sorting logic (fixing price sort field)
+//     const sortOption =
+//       sortingCriteria === "newToOld"
+//         ? { createdAt: -1 }
+//         : sortingCriteria === "priceLowHigh"
+//         ? { "priceDetails.price": 1 }
+//         : sortingCriteria === "priceHighLow"
+//         ? { "priceDetails.price": -1 }
+//         : {};
+
+//     // Handle search by Art title or Artist name
+//     if (searchCriteria === "Art" && searchInput) {
+//       query.title = { $regex: searchInput, $options: "i" }; // Case insensitive search in title
+//     }
+
+//     // If searchCriteria is 'Artist', perform a search based on the artist's name (firstName and lastName)
+//     if (searchCriteria === "Artist" && searchInput) {
+//       // Do an initial find with the other filters, then populate and filter by artist's name
+//       filteredArts = await artDetailModel
+//         .find(query)
+//         .populate({
+//           path: "artist",
+//           match: {
+//             $or: [
+//               { firstName: { $regex: searchInput, $options: "i" } }, // Case insensitive
+//               { lastName: { $regex: searchInput, $options: "i" } },  // Case insensitive
+//               { $expr: { $regexMatch: { input: { $concat: ["$firstName", "$lastName"] }, regex: searchInput, options: "i" } } }, // Case insensitive match for full name
+//             ],
+//           },
+//           select: { firstName: 1, lastName: 1 },
+//         })
+//         .sort(sortOption);
+//     } else {
+//       // Perform the query without the artist name search
+//       filteredArts = await artDetailModel
+//         .find(query)
+//         .populate({
+//           path: "artist",
+//           select: { firstName: 1, lastName: 1 },
+//         })
+//         .sort(sortOption);
+//     }
+
+//     console.log("filteredArts==========>", filteredArts);
+
+//     // If no filters or searches were applied, return all arts
+//     if (!searchCriteria &&
+//       (!style || style.length === 0) &&
+//       !subject &&
+//       (!medium || medium.length === 0) &&
+//       (!minPrice || !maxPrice) &&
+//       (!material || material.length === 0) &&
+//       (!size || size.length === 0) &&
+//       (!orientation || orientation.length === 0) &&
+//       (!artistCountry || artistCountry.length === 0) &&
+//       (!featuredartist || featuredartist.length === 0)) {
+//       filteredArts = await artDetailModel
+//         .find()
+//         .populate({
+//           path: "artist",
+//           select: { firstName: 1, lastName: 1 },
+//         });
+//     }
+
+//     // If no results are found
+//     if (filteredArts.length === 0) {
+//       return res.status(400).send({ success: false, message: "No art found" });
+//     }
+
+//     return res.status(200).send({ success: true, data: filteredArts });
+//   } catch (error) {
+//     return res.status(500).send({ success: false, message: error.message });
+//   }
+// };
 
 exports.newFilterArt = async (req, res) => {
   try {
@@ -456,20 +589,20 @@ exports.newFilterArt = async (req, res) => {
       size,
       orientation,
       artistCountry,
-      featuredartist
+      featuredartist,
     } = req.body;
 
     let query = {};
 
-    console.log("body==========>",req.body)
+    console.log("body==========>", req.body);
 
     // Handle the body-based filters
     if (style && style.length > 0) {
-      query.styles = { $in: style };
+      query.styles = { $in: style.map((s) => new RegExp(s, "i")) }; // Case insensitive match
     }
 
     if (subject) {
-      query.subject = { $in: subject };
+      query.subject = { $in: subject.map((s) => new RegExp(s, "i")) }; // Case insensitive match
     }
 
     if (minPrice && maxPrice) {
@@ -477,58 +610,110 @@ exports.newFilterArt = async (req, res) => {
     }
 
     if (medium && medium.length > 0) {
-      query.medium = { $in: medium };
+      query.medium = { $in: medium.map((m) => new RegExp(m, "i")) }; // Case insensitive match
     }
 
     if (material && material.length > 0) {
-      query.materials = { $in: material };
+      query.materials = { $in: material.map((m) => new RegExp(m, "i")) }; // Case insensitive match
     }
 
     if (orientation && orientation.length > 0) {
-      query.orientation = { $in: orientation };
+      query.orientation = { $in: orientation.map((o) => new RegExp(o, "i")) }; // Case insensitive match
     }
 
     if (artistCountry && artistCountry.length > 0) {
-      // query.artistCountry = artistCountry;
-      query.artistCountry = { $in: artistCountry };
+      query.artistCountry = {
+        $in: artistCountry.map((c) => new RegExp(c, "i")),
+      }; // Case insensitive match
     }
 
     if (featuredartist && featuredartist.length > 0) {
-      // query.featuredArtist = featuredartist;
-      query.featuredArtist = { $in: featuredartist };
+      query.featuredArtist = {
+        $in: featuredartist.map((f) => new RegExp(f, "i")),
+      }; // Case insensitive match
     }
+
+    // Sorting logic (fixing price sort field)
+    const sortOption =
+      sortingCriteria === "newToOld"
+        ? { createdAt: -1 }
+        : sortingCriteria === "priceLowHigh"
+        ? { "priceDetails.price": 1 }
+        : sortingCriteria === "priceHighLow"
+        ? { "priceDetails.price": -1 }
+        : {};
 
     // Handle search by Art title or Artist name
     if (searchCriteria === "Art" && searchInput) {
-      query.title = { $regex: searchInput, $options: "i" };
-    } else if (searchCriteria === "Artist" && searchInput) {
-      query.$or = [
-        { "artist.firstName": { $regex: searchInput, $options: "i" } },
-        { "artist.lastName": { $regex: searchInput, $options: "i" } },
-      ];
+      query.title = { $regex: searchInput, $options: "i" }; // Case insensitive search in title
     }
-    
 
-    // Perform the query with the optional sorting
-    filteredArts = await artDetailModel.find(query);
-
-    console.log("filteredArts==========>",filteredArts)
-    // If no filters or searches were applied, return all arts
-    if (!searchCriteria && !style && !subject && !medium && !minPrice && !maxPrice && !material && !size && !orientation && !artistCountry && !featuredartist) {
-      filteredArts = await artDetailModel.find().populate({
-        path: "artist",
-        select: { firstName: 1, lastName: 1 },
-      });
-    } else {
+    // Query for searchCriteria as 'Artist'
+    if (searchCriteria === "Artist" && searchInput) {
+      console.log("searchCriteria === Artist");
       filteredArts = await artDetailModel
         .find(query)
-        .sort(sortingCriteria === "newToOld" ? { createdAt:-1 } : sortingCriteria === "priceLowHigh" ? { price: 1 } : sortingCriteria === "priceHighLow" ? { price: -1 } : {})
+        .sort(sortOption) // Sorting should still happen here
+        .populate({
+          path: "artist",
+          match: {
+            $or: [
+              { firstName: { $regex: searchInput, $options: "i" } }, // Case insensitive
+              { lastName: { $regex: searchInput, $options: "i" } },  // Case insensitive
+              {
+                $expr: {
+                  $regexMatch: {
+                    input: { $concat: ["$firstName", "$lastName"] },
+                    regex: searchInput,
+                    options: "i",
+                  },
+                },
+              }, // Case insensitive match for full name
+            ],
+          },
+          select: { firstName: 1, lastName: 1 },
+        })       
+
+      console.log("Filtered arts for Artist search==========>", filteredArts);
+    } else {
+      // Query for all arts or when no filters/searchCriteria are present
+      filteredArts = await artDetailModel
+        .find(query)
         .populate({
           path: "artist",
           select: { firstName: 1, lastName: 1 },
-        });
+        })
+        .sort(sortOption); // Ensure sorting is applied here as well
+
+      console.log("Filtered arts (no Artist search)==========>", filteredArts);
     }
 
+    // If no filters or searches were applied, return all arts
+    const noFiltersApplied =
+      !searchCriteria &&
+      (!style || style.length === 0) &&
+      !subject &&
+      (!medium || medium.length === 0) &&
+      (!minPrice || !maxPrice) &&
+      (!material || material.length === 0) &&
+      (!size || size.length === 0) &&
+      (!orientation || orientation.length === 0) &&
+      (!artistCountry || artistCountry.length === 0) &&
+      (!featuredartist || featuredartist.length === 0);
+
+    if (noFiltersApplied) {
+      filteredArts = await artDetailModel
+        .find()
+        .populate({
+          path: "artist",
+          select: { firstName: 1, lastName: 1 },
+        })
+        .sort(sortOption); // Sorting applied even when no filters are active
+
+      console.log("All arts returned (no filters)==========>", filteredArts);
+    }
+
+    // If no results are found
     if (filteredArts.length === 0) {
       return res.status(400).send({ success: false, message: "No art found" });
     }
