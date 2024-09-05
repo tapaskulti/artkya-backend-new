@@ -444,137 +444,6 @@ exports.deleteArt = async (req, res) => {
   }
 };
 
-// exports.newFilterArt = async (req, res) => {
-//   try {
-//     let filteredArts;
-//     const { sortingCriteria, searchCriteria, searchInput } = req.query;
-//     const {
-//       style,
-//       subject,
-//       medium,
-//       minPrice,
-//       maxPrice,
-//       material,
-//       size,
-//       orientation,
-//       artistCountry,
-//       featuredartist
-//     } = req.body;
-
-//     let query = {};
-
-//     console.log("body==========>",req.body)
-
-//     // Handle the body-based filters
-//     if (style && style.length > 0) {
-//       query.styles = { $in: style };
-//     }
-
-//     if (subject) {
-//       query.subject = { $in: subject };
-//     }
-
-//     if (minPrice && maxPrice) {
-//       query["priceDetails.price"] = { $gte: minPrice, $lte: maxPrice };
-//     }
-
-//     if (medium && medium.length > 0) {
-//       query.medium = { $in: medium };
-//     }
-
-//     if (material && material.length > 0) {
-//       query.materials = { $in: material };
-//     }
-
-//     if (orientation && orientation.length > 0) {
-//       query.orientation = { $in: orientation };
-//     }
-
-//     if (artistCountry && artistCountry.length > 0) {
-//       // query.artistCountry = artistCountry;
-//       query.artistCountry = { $in: artistCountry };
-//     }
-
-//     if (featuredartist && featuredartist.length > 0) {
-//       // query.featuredArtist = featuredartist;
-//       query.featuredArtist = { $in: featuredartist };
-//     }
-
-//      // Sorting logic (fixing price sort field)
-//     const sortOption =
-//       sortingCriteria === "newToOld"
-//         ? { createdAt: -1 }
-//         : sortingCriteria === "priceLowHigh"
-//         ? { "priceDetails.price": 1 }
-//         : sortingCriteria === "priceHighLow"
-//         ? { "priceDetails.price": -1 }
-//         : {};
-
-//     // Handle search by Art title or Artist name
-//     if (searchCriteria === "Art" && searchInput) {
-//       query.title = { $regex: searchInput, $options: "i" }; // Case insensitive search in title
-//     }
-
-//     // If searchCriteria is 'Artist', perform a search based on the artist's name (firstName and lastName)
-//     if (searchCriteria === "Artist" && searchInput) {
-//       // Do an initial find with the other filters, then populate and filter by artist's name
-//       filteredArts = await artDetailModel
-//         .find(query)
-//         .populate({
-//           path: "artist",
-//           match: {
-//             $or: [
-//               { firstName: { $regex: searchInput, $options: "i" } }, // Case insensitive
-//               { lastName: { $regex: searchInput, $options: "i" } },  // Case insensitive
-//               { $expr: { $regexMatch: { input: { $concat: ["$firstName", "$lastName"] }, regex: searchInput, options: "i" } } }, // Case insensitive match for full name
-//             ],
-//           },
-//           select: { firstName: 1, lastName: 1 },
-//         })
-//         .sort(sortOption);
-//     } else {
-//       // Perform the query without the artist name search
-//       filteredArts = await artDetailModel
-//         .find(query)
-//         .populate({
-//           path: "artist",
-//           select: { firstName: 1, lastName: 1 },
-//         })
-//         .sort(sortOption);
-//     }
-
-//     console.log("filteredArts==========>", filteredArts);
-
-//     // If no filters or searches were applied, return all arts
-//     if (!searchCriteria &&
-//       (!style || style.length === 0) &&
-//       !subject &&
-//       (!medium || medium.length === 0) &&
-//       (!minPrice || !maxPrice) &&
-//       (!material || material.length === 0) &&
-//       (!size || size.length === 0) &&
-//       (!orientation || orientation.length === 0) &&
-//       (!artistCountry || artistCountry.length === 0) &&
-//       (!featuredartist || featuredartist.length === 0)) {
-//       filteredArts = await artDetailModel
-//         .find()
-//         .populate({
-//           path: "artist",
-//           select: { firstName: 1, lastName: 1 },
-//         });
-//     }
-
-//     // If no results are found
-//     if (filteredArts.length === 0) {
-//       return res.status(400).send({ success: false, message: "No art found" });
-//     }
-
-//     return res.status(200).send({ success: true, data: filteredArts });
-//   } catch (error) {
-//     return res.status(500).send({ success: false, message: error.message });
-//   }
-// };
-
 exports.newFilterArt = async (req, res) => {
   try {
     let filteredArts;
@@ -653,6 +522,7 @@ exports.newFilterArt = async (req, res) => {
       searchquery.artistFullName = { $regex: searchInput, $options: "i" }; // Case insensitive search for artist name
     }
 
+     
     // Check if there are no filters or search applied
     const noFiltersApplied =
       !searchCriteria &&
@@ -674,7 +544,7 @@ exports.newFilterArt = async (req, res) => {
           path: "artist",
           select: { firstName: 1, lastName: 1 },
         })
-        .sort(sortOption || { createdAt: -1 }); // Default sorting if no sort criteria
+        .sort(sortOption)// Default sorting if no sort criteria
 
       console.log("All arts returned (no filters)==========>", filteredArts);
     } else {
@@ -695,6 +565,20 @@ exports.newFilterArt = async (req, res) => {
           },
         },
         {
+          $lookup: {
+            from: "artistdetails", // Join with artist details to get country info
+            localField: "artist._id",
+            foreignField: "userId",
+            as: "artistDetails",
+          },
+        },
+        {
+          $unwind: {
+            path: "$artistDetails",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
           $addFields: {
             artistFullName: {
               $toLower: {
@@ -705,15 +589,26 @@ exports.newFilterArt = async (req, res) => {
                 ],
               },
             },
+            artistCountry: "$artistDetails.country"
           },
         },
         {
           $match: {
             ...query, // Apply the filters
-            ...searchquery, // Apply the search query
+            ...searchquery, // Apply the search query            
           },
         },
       ];
+      
+      if (artistCountry && artistCountry.length > 0) {
+        pipeline.push({
+          $match: {
+            artistCountry: {
+              $in: artistCountry.map((c) => new RegExp(c, "i")), // Case insensitive match for country
+            },
+          },
+        });
+      }
 
       // Only add the $sort stage if sorting criteria is provided
       if (sortOption) {
