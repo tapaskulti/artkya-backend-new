@@ -593,6 +593,7 @@ exports.newFilterArt = async (req, res) => {
     } = req.body;
 
     let query = {};
+    let searchquery = {};
 
     console.log("body==========>", req.body);
 
@@ -645,50 +646,14 @@ exports.newFilterArt = async (req, res) => {
 
     // Handle search by Art title or Artist name
     if (searchCriteria === "Art" && searchInput) {
-      query.title = { $regex: searchInput, $options: "i" }; // Case insensitive search in title
+      searchquery.title = { $regex: searchInput, $options: "i" }; // Case insensitive search in title
     }
 
-    // Query for searchCriteria as 'Artist'
     if (searchCriteria === "Artist" && searchInput) {
-      console.log("searchCriteria === Artist");
-      filteredArts = await artDetailModel
-        .find(query)
-        .sort(sortOption) // Sorting should still happen here
-        .populate({
-          path: "artist",
-          match: {
-            $or: [
-              { firstName: { $regex: searchInput, $options: "i" } }, // Case insensitive
-              { lastName: { $regex: searchInput, $options: "i" } },  // Case insensitive
-              {
-                $expr: {
-                  $regexMatch: {
-                    input: { $concat: ["$firstName", "$lastName"] },
-                    regex: searchInput,
-                    options: "i",
-                  },
-                },
-              }, // Case insensitive match for full name
-            ],
-          },
-          select: { firstName: 1, lastName: 1 },
-        })       
-
-      console.log("Filtered arts for Artist search==========>", filteredArts);
-    } else {
-      // Query for all arts or when no filters/searchCriteria are present
-      filteredArts = await artDetailModel
-        .find(query)
-        .populate({
-          path: "artist",
-          select: { firstName: 1, lastName: 1 },
-        })
-        .sort(sortOption); // Ensure sorting is applied here as well
-
-      console.log("Filtered arts (no Artist search)==========>", filteredArts);
+      searchquery.artistFullName = { $regex: searchInput, $options: "i" }; // Case insensitive search for artist name
     }
 
-    // If no filters or searches were applied, return all arts
+    // Check if there are no filters or search applied
     const noFiltersApplied =
       !searchCriteria &&
       (!style || style.length === 0) &&
@@ -701,6 +666,7 @@ exports.newFilterArt = async (req, res) => {
       (!artistCountry || artistCountry.length === 0) &&
       (!featuredartist || featuredartist.length === 0);
 
+    // If no filters are applied, return all arts using a simple find query with sorting
     if (noFiltersApplied) {
       filteredArts = await artDetailModel
         .find()
@@ -711,6 +677,48 @@ exports.newFilterArt = async (req, res) => {
         .sort(sortOption); // Sorting applied even when no filters are active
 
       console.log("All arts returned (no filters)==========>", filteredArts);
+    } else {
+      // Use aggregation if there are filters or search criteria
+      filteredArts = await artDetailModel.aggregate([
+        {
+          $lookup: {
+            from: "users", // Artist collection name
+            localField: "artist",
+            foreignField: "_id",
+            as: "artist",
+          },
+        },
+        {
+          $unwind: {
+            path: "$artist",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $addFields: {
+            artistFullName: {
+              $toLower: {
+                $concat: [
+                  { $ifNull: ["$artist.firstName", ""] },
+                  " ",
+                  { $ifNull: ["$artist.lastName", ""] },
+                ],
+              },
+            },
+          },
+        },
+        {
+          $match: {
+            ...query, // Apply the filters
+            ...searchquery, // Apply the search query
+          },
+        },
+        {
+          $sort: sortOption, // Apply sorting
+        },
+      ]);
+
+      console.log("Filtered arts with filters==========>", filteredArts);
     }
 
     // If no results are found
@@ -723,3 +731,4 @@ exports.newFilterArt = async (req, res) => {
     return res.status(500).send({ success: false, message: error.message });
   }
 };
+
