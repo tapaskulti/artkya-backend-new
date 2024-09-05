@@ -642,7 +642,7 @@ exports.newFilterArt = async (req, res) => {
         ? { "priceDetails.price": 1 }
         : sortingCriteria === "priceHighLow"
         ? { "priceDetails.price": -1 }
-        : {};
+        : null; // Set to null if no sorting criteria is provided
 
     // Handle search by Art title or Artist name
     if (searchCriteria === "Art" && searchInput) {
@@ -674,12 +674,12 @@ exports.newFilterArt = async (req, res) => {
           path: "artist",
           select: { firstName: 1, lastName: 1 },
         })
-        .sort(sortOption); // Sorting applied even when no filters are active
+        .sort(sortOption || { createdAt: -1 }); // Default sorting if no sort criteria
 
       console.log("All arts returned (no filters)==========>", filteredArts);
     } else {
       // Use aggregation if there are filters or search criteria
-      filteredArts = await artDetailModel.aggregate([
+      const pipeline = [
         {
           $lookup: {
             from: "users", // Artist collection name
@@ -713,10 +713,14 @@ exports.newFilterArt = async (req, res) => {
             ...searchquery, // Apply the search query
           },
         },
-        {
-          $sort: sortOption, // Apply sorting
-        },
-      ]);
+      ];
+
+      // Only add the $sort stage if sorting criteria is provided
+      if (sortOption) {
+        pipeline.push({ $sort: sortOption });
+      }
+
+      filteredArts = await artDetailModel.aggregate(pipeline);
 
       console.log("Filtered arts with filters==========>", filteredArts);
     }
@@ -731,4 +735,5 @@ exports.newFilterArt = async (req, res) => {
     return res.status(500).send({ success: false, message: error.message });
   }
 };
+
 
