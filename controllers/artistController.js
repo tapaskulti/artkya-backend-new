@@ -31,10 +31,10 @@ exports.getArtistById = async (req, res) => {
       userId: ArtistId,
     }).populate({
       path: "userId",
-      select:{
-        firstName:1,
-        lastName:1
-      }
+      select: {
+        firstName: 1,
+        lastName: 1,
+      },
     });
 
     if (!getArtistDetails) {
@@ -78,8 +78,8 @@ exports.updateArtistProfile = async (req, res) => {
 
 exports.getAllArtByArtistId = async (req, res) => {
   try {
-    const{ArtistId} = req.query
-    const getAllArt = await Art.find({artist:ArtistId})
+    const { ArtistId } = req.query;
+    const getAllArt = await Art.find({ artist: ArtistId });
 
     return res.status(200).send({
       success: true,
@@ -120,9 +120,9 @@ exports.updateProfileImages = async (req, res) => {
         );
       }
 
-      console.log(artistProfilePictureFile);
-      console.log(artistCoverImageFile);
-      console.log(artistStudioImageFile);
+      // console.log("artistProfilePictureFile===>", artistProfilePictureFile);
+      // console.log("artistCoverImageFile===>", artistCoverImageFile);
+      // console.log(artistStudioImageFile);
     }
 
     const profileImage = artistProfilePictureFile && {
@@ -142,11 +142,14 @@ exports.updateProfileImages = async (req, res) => {
 
     const updatedImage = await Artist.findOneAndUpdate(
       { userId: ArtistId },
-      { profileImage: profileImage },
-      { coverPhoto: artistCoverImage },
-      { studioImage: artistStudioImage },
+      {
+        profileImage: profileImage && profileImage,
+        coverPhoto: artistCoverImage && artistCoverImage,
+        studioImage: artistStudioImage && artistStudioImage,
+      },
       { new: true }
     );
+
 
     if (updatedImage) {
       return res.status(200).send({
