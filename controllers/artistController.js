@@ -162,3 +162,43 @@ exports.updateProfileImages = async (req, res) => {
     return res.status(500).send({ success: false, message: error.message });
   }
 };
+
+
+exports.artAndArtistHomePage =async()=>{
+  try {
+    // Fetch artists with at least 4 artworks
+    const artists = await Artist.aggregate([
+      {
+        $lookup: {
+          from: "artDetails",  // artDetails collection to be joined
+          localField: "_id",   // Artist id
+          foreignField: "artist",  // Reference to artist in art model
+          as: "artworks",  // Output field to hold matched documents from artDetails
+        },
+      },
+      {
+        $match: {
+          "artworks.3": { $exists: true }, // Ensure at least 4 artworks (0 index, so check for 3)
+        },
+      },
+    ]);
+
+    if (artists.length === 0) {
+      return res.status(404).json({ message: "No artist found with at least 4 artworks." });
+    }
+
+    // Pick a random artist
+    const randomArtist = artists[Math.floor(Math.random() * artists.length)];
+
+    // Limit the artist's artworks to 10
+    const limitedArtworks = randomArtist.artworks.slice(0, 10);
+
+    // Return the random artist along with their 10 (or fewer) artworks
+    res.status(200).json({
+      artist: randomArtist,
+      artworks: limitedArtworks,
+    });
+  }  catch (error) {
+    return res.status(500).send({ success: false, message: error.message });
+  }
+}

@@ -5,6 +5,7 @@ const {
   getArtistById,
   getAllArtByArtistId,
   updateProfileImages,
+  artAndArtistHomePage,
 } = require("../controllers/artistController");
 const router = express.Router();
 
@@ -13,5 +14,6 @@ router.route("/getArtistById").get(getArtistById);
 router.route("/getAllArtByArtistId").get(getAllArtByArtistId);
 router.route("/updateArtistProfile").patch(updateArtistProfile);
 router.route("/updateProfileImages").patch(updateProfileImages);
+router.route("/artAndArtistHomePage").get(artAndArtistHomePage);
 
 module.exports = router;
