@@ -164,41 +164,54 @@ exports.updateProfileImages = async (req, res) => {
 };
 
 
-exports.artAndArtistHomePage =async()=>{
+exports.artAndArtistHomePage =async(req,res)=>{
   try {
-    // Fetch artists with at least 4 artworks
-    const artists = await Artist.aggregate([
-      {
-        $lookup: {
-          from: "artDetails",  // artDetails collection to be joined
-          localField: "_id",   // Artist id
-          foreignField: "artist",  // Reference to artist in art model
-          as: "artworks",  // Output field to hold matched documents from artDetails
-        },
-      },
-      {
-        $match: {
-          "artworks.3": { $exists: true }, // Ensure at least 4 artworks (0 index, so check for 3)
-        },
-      },
-    ]);
+    // Step 1: Get a random artist from the artistDetails collection
+    const randomArtist = await Artist.aggregate([{ $sample: { size: 1 } }]);
 
-    if (artists.length === 0) {
-      return res.status(404).json({ message: "No artist found with at least 4 artworks." });
+    if (randomArtist.length === 0) {
+      return res.status(404).json({ message: "No artist found." });
     }
 
-    // Pick a random artist
-    const randomArtist = artists[Math.floor(Math.random() * artists.length)];
+    // Extract the artist's aboutMe and userId
+    const artist = randomArtist[0];
+    const { aboutMe, userId } = artist;
 
-    // Limit the artist's artworks to 10
-    const limitedArtworks = randomArtist.artworks.slice(0, 10);
+    // Step 2: Run parallel tasks: 
+    // 1. Get the artist's name from the user collection.
+    // 2. Get up to 10 random artworks by this artist.
+    const [user, artworks] = await Promise.all([
+      // Fetch user details in parallel
+      User.findById({ _id: userId }).select("firstName lastName"),
+      
+      // Fetch artworks in parallel
+      Art.aggregate([
+        { $match: { artist: userId } }, // Filter artworks by artist's userId
+        { $sample: { size: 10 } },      // Get random 10 artworks
+        { $project: { title: 1, priceDetails: 1 } },  // Select only required fields
+      ])
+    ]);
 
-    // Return the random artist along with their 10 (or fewer) artworks
+    if (!user) {
+      return res.status(404).json({ message: "Artist user details not found." });
+    }
+
+    if (artworks.length < 4) {
+      return res.status(404).json({ message: "This artist has less than 4 artworks." });
+    }
+
+    // Step 3: Construct the artist's full name
+    const artistName = `${user.firstName} ${user.lastName}`;
+
+    // Step 4: Send the response
     res.status(200).json({
-      artist: randomArtist,
-      artworks: limitedArtworks,
+      artist: {
+        name: artistName,
+        aboutMe: aboutMe,
+      },
+      artworks: artworks,  // Contains title and priceDetails of artworks
     });
-  }  catch (error) {
+  }catch (error) {
     return res.status(500).send({ success: false, message: error.message });
   }
 }
