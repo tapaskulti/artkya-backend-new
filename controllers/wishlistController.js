@@ -127,10 +127,11 @@ exports.wishlistByUserId = async (req, res) => {
         subject: 1,
         title: 1,
         price: 1,
-        width: 1,
+        height: 1,
         depth: 1,
         width: 1,
         artist: 1,
+        priceDetails: 1,
       },
       // options: {
       //   skip: 5,
