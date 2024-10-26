@@ -3,10 +3,13 @@ const artDetailModel = require("../models/art");
 const draftModel = require("../models/draft");
 const userModel = require("../models/user");
 const { Client } = require("square");
-const crypto = require("crypto");
+const { randomUUID } = require("crypto");
 
 const { paymentsApi } = new Client({
   // accessToken: process.env.SQUARE_ACCESS_TOKEN,
+  accessToken: process.env.SQUARE_ACCESS_TOKEN,
+  // "EAAAFIZzaMiA-vXlNC4ayqONtIY1_xC7pMZY-G57ZS0LjZPb5l6fgOZ6obiER2pz",
+  // environment: "sandbox",
 });
 
 exports.createArt = async (req, res) => {
