@@ -2,7 +2,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/user");
 const cloudinary = require("cloudinary");
-
+const ArtistDetails = require("../models/artistDetails")
 //creating Refresh Token
 const createRefreshToken = (payload) => {
   return jwt.sign(payload, process.env.JWT_SECRET_REFRESH_TOKEN, {
@@ -283,3 +283,75 @@ exports.updateUserAddress = async (req, res) => {
 
 // Reset Password
 
+
+exports.uploadUserAvatar = async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    if (!req.files || !req.files.avatar) {
+      return res.status(400).send({
+        success: false,
+        message: "Avatar image is required.",
+      });
+    }
+
+    console.log("req.files.avatar==>",req.files.avatar)
+    const avatarFile = await cloudinary.v2.uploader.upload(
+      req.files.avatar.tempFilePath,
+      { folder: "User_Avatars" }
+    );
+
+    if (!avatarFile) {
+      return res.status(500).send({
+        success: false,
+        message: "Failed to upload avatar image.",
+      });
+    }
+
+    const avatar = {
+      id: avatarFile.public_id,
+      secure_url: avatarFile.secure_url,
+    };
+
+    // Update the user collection
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { avatar },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).send({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    // Check if the user is an artist and update the artistDetails collection if true
+    if (updatedUser.isArtist) {
+      const updatedArtist = await ArtistDetails.findOneAndUpdate(
+        { userId },
+        { profileImage: avatar },
+        { new: true }
+      );
+
+      if (!updatedArtist) {
+        return res.status(404).send({
+          success: false,
+          message: "Artist details not found.",
+        });
+      }
+    }
+
+    return res.status(200).send({
+      success: true,
+      message: "Avatar updated successfully.",
+      data: updatedUser,
+    });
+  } catch (error) {
+    return res.status(500).send({
+      success: false,
+      message: error.message,
+    });
+  }
+};
