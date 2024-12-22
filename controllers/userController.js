@@ -338,14 +338,14 @@ exports.uploadUserAvatar = async (req, res) => {
       if (!updatedArtist) {
         return res.status(404).send({
           success: false,
-          message: "Artist details not found.",
+          message: "Artist details not found",
         });
       }
     }
 
     return res.status(200).send({
       success: true,
-      message: "Avatar updated successfully.",
+      message: "Avatar updated successfully",
       data: updatedUser,
     });
   } catch (error) {
