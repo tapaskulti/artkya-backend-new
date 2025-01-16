@@ -70,6 +70,7 @@ app.use("/api/v1/cart", require("./routes/cart"));
 // app.use("/api/v1/collection", require("./routes/collection"));
 app.use("/api/v1/wishlist", require("./routes/wishlist"));
 app.use("/api/v1/artist", require("./routes/artist"));
+app.use("/api/v1/admin", require("./routes/admin"));
 
 
 
