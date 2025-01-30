@@ -20,6 +20,9 @@ const artDetailsSchema = new mongoose.Schema(
       type: String,
       default: "Painting",
     },
+    printOption: {
+      type: String,
+    },
     subject: {
       type: String,
     },
