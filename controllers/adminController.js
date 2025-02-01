@@ -1,4 +1,9 @@
 const nodemailer = require('nodemailer');
+const handlebars = require("handlebars");
+const fs = require("fs");
+const path = require("path");
+
+
 
 const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
@@ -53,6 +58,67 @@ const transporter = nodemailer.createTransport({
           <p>Best regards,</p>
           <p>Your Company Name</p>
         `
+      };
+  
+      // Send both emails concurrently
+      await Promise.all([
+        transporter.sendMail(adminMailOptions),
+        transporter.sendMail(userMailOptions)
+      ]);
+  
+      res.status(200).json({ message: "Messages sent successfully" });
+  
+    } catch (err) {
+      console.error('Email sending error:', err);
+      res.status(500).json({ error: "Failed to send email" });
+    }
+  };
+
+
+  exports.buyOriginalArtMail = async (req, res) => {
+    const {
+      customerName,
+      customerAddress,
+      contactNo,
+      customerEmail,
+      artid,
+      artPrice,
+      originalImage,
+    } = req.body;
+  
+    // const originalArtBuyTemplate = fs.readFileSync(
+    //   path.join(__dirname, "../template/OriginalArtBuy.hbs"),
+    //   "utf8"
+    // );
+  
+    // const template = handlebars.compile(originalArtBuyTemplate);
+
+    // const originalArtBuyBody = template({
+    //   original_art_id: artid,
+    //   customer_name: customerName,
+    //   address: customerAddress,
+    //   contact_number: contactNo,
+    //   email: customerEmail,
+    //   art_price: artPrice,
+    //   image_url: originalImage,
+    // });
+
+
+    try {
+      // Email to admin/yourself
+      const adminMailOptions = {
+        from: process.env.EMAIL_USER,
+        to: process.env.EMAIL_USER,
+        subject: "New Contact Form Submission",
+        html: originalArtBuyBody
+      };
+  
+      // Email to user (acknowledgment)
+      const userMailOptions = {
+        from: process.env.EMAIL_USER,
+        to: customerEmail,
+        subject: "Thank you for contacting us",
+        // html: originalArtBuyBody
       };
   
       // Send both emails concurrently
