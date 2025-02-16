@@ -50,6 +50,12 @@ const artDetailsSchema = new mongoose.Schema(
       offerPrice: { type: Number },
       currency: { type: String },
     },
+    adminPrice: {
+      type: String,
+    },
+    totalPrice: {
+      type: String,
+    },
     discountedPrice: {
       type: String,
     },
@@ -71,7 +77,7 @@ const artDetailsSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    InQueue:{
+    InQueue: {
       type: Boolean,
       default: false,
     },
