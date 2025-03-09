@@ -61,15 +61,13 @@ const artDetailsSchema = new mongoose.Schema(
     },
     
  // Sales & Commission Details
-    isOriginalSold: { type: Boolean, default: false }, // Track if original is sold
-    originalCommission: { type: Number, default: 20 }, // Default 20%, can be updated
-
+    isOriginalSold: { type: Boolean, default: false },
     // Print copies tracking
     printCopies: [
       {
-        dimension: { type: String, required: true }, // e.g., "5x6"
-        saleCount: { type: Number, default: 0 }, // Number of times sold
-        totalSales: { type: Number, default: 0 }, // Total revenue from this dimension
+        dimension: { type: String, required: true },
+        saleCount: { type: Number, default: 0 },
+        totalSales: { type: Number, default: 0 },
       },
     ],
 

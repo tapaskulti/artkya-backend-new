@@ -2,6 +2,82 @@ const nodemailer = require('nodemailer');
 const handlebars = require("handlebars");
 const fs = require("fs");
 const path = require("path");
+const User = require("../models/user")
+const ArtistDetails = require("../models/artistDetails")
+const ArtDetails = require("../models/art")
+
+
+// Get total users and total artists
+exports.getTotalUsersAndArtists = async (req, res) => {
+  try {
+    const totalUsers = await User.countDocuments();
+    // const totalArtists = await User.countDocuments({ role: "ARTIST" });
+    const totalArtists = await ArtistDetails.countDocuments();
+
+    return res.json({
+      totalUsers,
+      totalArtists,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// Get all user details
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().select("firstName lastName email role createdAt isArtist isActive");
+
+    const userData = users.map((user) => ({
+      name: `${user.firstName} ${user.lastName}`,
+      email: user.email,
+      userType: user.role,
+      joiningDate: user.createdAt,
+      verified: user.isArtist,
+      status: user.isActive ? "Active" : "Inactive",
+    }));
+
+    return res.json(userData);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// Get all artist details
+exports.getAllArtists = async (req, res) => {
+  try {
+    const artists = await User.find({ role: "ARTIST" }).select("firstName lastName email createdAt isArtist isActive");
+    const artistDetails = await ArtistDetails.find();
+
+    let artistData = [];
+
+    for (let artist of artists) {
+      // Find artist details
+      const details = artistDetails.find((d) => d.userId.toString() === artist._id.toString());
+      const commission = details ? details.originalPercent : 20; // Default 20% if not set
+
+      // Get total art sold and revenue
+      const soldArts = await ArtDetails.find({ artist: artist._id, isOriginalSold: true });
+      const totalRevenue = soldArts.reduce((sum, art) => sum + art.totalPrice, 0);
+
+      artistData.push({
+        name: `${artist.firstName} ${artist.lastName}`,
+        email: artist.email,
+        userType: "ARTIST",
+        joiningDate: artist.createdAt,
+        verified: artist.isArtist,
+        status: artist.isActive ? "Active" : "Inactive",
+        originalCommission: commission,
+        totalArtSold: soldArts.length,
+        totalRevenue,
+      });
+    }
+
+    res.json(artistData);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 
 
@@ -13,8 +89,7 @@ const transporter = nodemailer.createTransport({
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
-  });
-  
+  });  
 
 
   exports.contactUs = async (req, res) => {
@@ -135,5 +210,6 @@ const transporter = nodemailer.createTransport({
     }
   };
 
+  
 
 
