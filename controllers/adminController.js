@@ -9,11 +9,16 @@ const ArtDetails = require("../models/art");
 // Get total users and total artists
 exports.getTotalUsersAndArtists = async (req, res) => {
   try {
-    const totalUsers = await User.countDocuments();
-    // const totalArtists = await User.countDocuments({ role: "ARTIST" });
-    const totalArtists = await ArtistDetails.countDocuments();
+    // const totalUsers = await User.countDocuments();
+    // // const totalArtists = await User.countDocuments({ role: "ARTIST" });
+    // const totalArtists = await ArtistDetails.countDocuments();
 
-    return res.json({
+    const [totalUsers, totalArtists] = await Promise.all([
+      User.countDocuments(),
+      ArtistDetails.countDocuments(),
+    ]);
+
+    return res.status(200).json({
       totalUsers,
       totalArtists,
     });
@@ -26,15 +31,27 @@ exports.getTotalUsersAndArtists = async (req, res) => {
 exports.getAllUsers = async (req, res) => {
   try {
     const userData = await User.aggregate([
-      {},
       {
         $project: {
           _id: 1,
           name: { $concat: ["$firstName", " ", "$lastName"] },
           email: "$email",
-          userType: "$role",
+          role:"$role",
+          userType: {
+            $cond:{
+              if:"isArtist",
+              then:"ARTIST",
+              else:"USER"
+            }
+          },
           joiningDate: "$createdAt",
-          verified: "$isArtist",
+          verified: {
+            $cond: {
+              if: "$isArtApprovalReq",
+              then: "Unverified",
+              else: "Verified",
+            }
+          },
           status: {
             $cond: {
               if: "$isActive",
@@ -46,7 +63,7 @@ exports.getAllUsers = async (req, res) => {
       },
     ]);
 
-    return res.json(userData);
+    return res.status(200).json(userData);
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -55,55 +72,72 @@ exports.getAllUsers = async (req, res) => {
 // Get all artist details
 exports.getAllArtists = async (req, res) => {
   try {
-    const artists = await User.find({ role: "ARTIST" }).select(
-      "firstName lastName email createdAt isArtist isActive"
-    );
-    const artistDetails = await ArtistDetails.find();
+    const artists = await User.aggregate([
+      // Match only artists
+      { $match: { isArtist: true } },
 
-    let artistData = [];
+      // Lookup artist details
+      {
+        $lookup: {
+          from: "artistdetails", // Collection name for ArtistDetails
+          localField: "_id",
+          foreignField: "userId",
+          as: "artistDetails",
+        },
+      },
 
-    for (let artist of artists) {
-      // Find artist details
-      const details = artistDetails.find(
-        (d) => d.userId.toString() === artist._id.toString()
-      );
-      const commission = details ? details.originalPercent : 20; // Default 20% if not set
+      // Unwind artistDetails (since it's a one-to-one relationship)
+      { $unwind: { path: "$artistDetails", preserveNullAndEmptyArrays: true } },
 
-      // Get total art sold and revenue
-      const soldArts = await ArtDetails.find({
-        artist: artist._id,
-        isOriginalSold: true,
-      });
-      const totalRevenue = soldArts.reduce(
-        (sum, art) => sum + art.totalPrice,
-        0
-      );
+      // Lookup sold arts
+      {
+        $lookup: {
+          from: "artdetails", // Collection name for ArtDetails
+          localField: "_id",
+          foreignField: "artist",
+          as: "soldArts",
+          pipeline: [
+            // Match only sold arts
+            { $match: { isOriginalSold: true } },
+          ],
+        },
+      },
 
-      artistData.push({
-        name: `${artist.firstName} ${artist.lastName}`,
-        email: artist.email,
-        userType: "ARTIST",
-        joiningDate: artist.createdAt,
-        verified: artist.isArtist,
-        status: artist.isActive ? "Active" : "Inactive",
-        originalCommission: commission,
-        totalArtSold: soldArts.length,
-        totalRevenue,
-      });
-    }
+      // Project required fields
+      {
+        $project: {
+          name: { $concat: ["$firstName", " ", "$lastName"] },
+          email: 1,
+          userType: "ARTIST",
+          joiningDate: "$createdAt",
+          verified: "$isArtist",
+          status: {
+            $cond: {
+              if: "$isActive",
+              then: "Active",
+              else: "Inactive",
+            },
+          },
+          originalCommission:"$artistDetails.originalPercent",
+          totalArtSold: { $size: "$soldArts" }, // Count of sold arts
+          totalRevenue: { $sum: "$soldArts.totalPrice" }, // Sum of totalPrice from sold arts
+        },
+      },
+    ])
 
-    res.json(artistData);
+    return res.status(200).json({
+      success: true,
+      data: artists,
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
-
 // Activate/Deactivate User (Handles artist status)
-
 exports.toggleUserStatus = async (req, res) => {
   try {
-    const { id } = req.query;
-    const user = await User.findById(id);
+    const { userId } = req.query;
+    const user = await User.findById(userId);
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
@@ -113,9 +147,114 @@ exports.toggleUserStatus = async (req, res) => {
     }
 
     await user.save();
-    res.json({ message: `User ${user.isActive ? "Activated" : "Deactivated"}`, user });
+    return res.status(200).json({
+      message: `User ${user.isActive ? "Activated" : "Deactivated"}`,
+      user,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// Update Print Commission Percentage
+exports.updatePrintCommission = async (req, res) => {
+  try {
+    const { artistId } = req.query;
+    const { printPercent } = req.body;
+
+    const artistDetails = await ArtistDetails.findOneAndUpdate(
+      { userId: artistId },
+      { printPercent },
+      { new: true }
+    );
+
+    if (!artistDetails) {
+      return res.status(404).json({ message: "Artist not found" });
+    }
+
+    return res.status(200).json({ message: "Print commission updated", artistDetails });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// Directly verify an artist (Admin privilege)
+exports.verifyArtist = async (req, res) => {
+  try {
+    const { artistId } = req.query;
+    const artistDetails = await ArtistDetails.findOneAndUpdate(
+      { userId: artistId },
+      { isVerified: true },
+      { new: true }
+    );
+
+    if (!artistDetails) {
+      return res.status(404).json({ message: "Artist not found" });
+    }
+
+    return res.status(200).json({ message: "Artist verified by admin", artistDetails });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// Reject artwork
+exports.rejectArtwork = async (req, res) => {
+  try {
+    const { artId } = req.query;
+    const artwork = await ArtDetails.findByIdAndUpdate(
+      { _id: artId },
+      { isPublished: false },
+      { new: true }
+    );
+    if (!artwork) return res.status(404).json({ message: "Artwork not found" });
+
+    return res.status(200).json({ message: "Artwork rejected", artwork });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+exports.approveArtwork = async (req, res) => {
+  try {
+    const { id } = req.query;
+    const artwork = await ArtDetails.findById(id).populate("artist");
+
+    if (!artwork || artwork.isPublished) {
+      return res.status(400).json({ message: "Invalid artwork" });
+    }
+
+    const artistDetails = await ArtistDetails.findOne({
+      userId: artwork.artist._id,
+    });
+
+    if (!artistDetails) {
+      return res.status(404).json({ message: "Artist details not found" });
+    }
+
+    const approvedArtworks = await ArtDetails.countDocuments({
+      artist: artwork.artist._id,
+      isPublished: true,
+    });
+
+    // Auto-approve if artist has 3 verified artworks
+    if (approvedArtworks >= 3 || artistDetails.isVerified) {
+      artwork.isPublished = true;
+      await artwork.save();
+      return res.json({ message: "Artwork auto-approved", artwork });
+    }
+
+    // check
+    const adminCommission =
+      (artwork.priceDetails.price * artistDetails.originalPercent) / 100;
+    artwork.isPublished = true;
+    artwork.adminPrice = adminCommission;
+    artwork.totalPrice = artwork.priceDetails.price + adminCommission + 20; // GST
+
+    await artwork.save();
+    return res.status(200).json({ message: "Artwork approved", artwork });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
   }
 };
 

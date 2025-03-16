@@ -72,12 +72,12 @@ const artistDetailSchema = new mongoose.Schema(
     },
     originalPercent: {
       type: Number,
-      default: 0,
+      default: 20,
     },
-    printPercent: {
-      type: Number,
-      default: 0,
-    },
+    // printPercent: {
+    //   type: Number,
+    //   default: 0,
+    // },
     artistFeaturedDesignation: {
       type: String,
       enum: [
