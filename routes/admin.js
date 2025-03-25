@@ -9,6 +9,7 @@ const {
   toggleUserStatus,
   verifyArtist,
   rejectArtwork,
+  approveArtwork,
 } = require("../controllers/adminController");
 const router = express.Router();
 
