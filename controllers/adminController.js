@@ -9,10 +9,6 @@ const ArtDetails = require("../models/art");
 // Get total users and total artists
 exports.getTotalUsersAndArtists = async (req, res) => {
   try {
-    // const totalUsers = await User.countDocuments();
-    // // const totalArtists = await User.countDocuments({ role: "ARTIST" });
-    // const totalArtists = await ArtistDetails.countDocuments();
-
     const [totalUsers, totalArtists] = await Promise.all([
       User.countDocuments(),
       ArtistDetails.countDocuments(),
@@ -21,7 +17,7 @@ exports.getTotalUsersAndArtists = async (req, res) => {
     return res.status(200).json({
       totalUsers,
       totalArtists,
-    });
+    }); 
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -257,6 +253,9 @@ exports.approveArtwork = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
+
+exports.getAllPainting
 
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,

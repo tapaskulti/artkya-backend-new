@@ -53,14 +53,14 @@ const artDetailsSchema = new mongoose.Schema(
     adminPrice: {
       type: String,
     },
+    commissionAmount: {
+      type: Number,
+    },
     totalPrice: {
-      type: String,
+      type: Number,
     },
-    discountedPrice: {
-      type: String,
-    },
-    
- // Sales & Commission Details
+
+    // Sales & Commission Details
     isOriginalSold: { type: Boolean, default: false },
     // Print copies tracking
     printCopies: [
