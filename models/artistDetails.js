@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 
+
 const artistDetailSchema = new mongoose.Schema(
   {
     userId: {
@@ -42,7 +43,6 @@ const artistDetailSchema = new mongoose.Schema(
     exibition: { type: String },
     // events: [{ type: String }],
     events: { type: String },
-
     dob: {
       type: String,
     },
@@ -70,6 +70,14 @@ const artistDetailSchema = new mongoose.Schema(
     printOption: {
       type: String,
     },
+    originalPercent: {
+      type: Number,
+      default: 20,
+    },
+    // printPercent: {
+    //   type: Number,
+    //   default: 0,
+    // },
     artistFeaturedDesignation: {
       type: String,
       enum: [
@@ -80,10 +88,6 @@ const artistDetailSchema = new mongoose.Schema(
         "THE_OTHER_ART_FAIR",
       ],
     },
-    // artistNotes: {
-    //   type: mongoose.Schema.Types.ObjectId,
-    //   ref: "artistNotes",
-    // },
   },
   { timestamps: true }
 );

@@ -50,9 +50,27 @@ const artDetailsSchema = new mongoose.Schema(
       offerPrice: { type: Number },
       currency: { type: String },
     },
-    discountedPrice: {
+    adminPrice: {
       type: String,
     },
+    commissionAmount: {
+      type: Number,
+    },
+    totalPrice: {
+      type: Number,
+    },
+
+    // Sales & Commission Details
+    isOriginalSold: { type: Boolean, default: false },
+    // Print copies tracking
+    printCopies: [
+      {
+        dimension: { type: String, required: true },
+        saleCount: { type: Number, default: 0 },
+        totalSales: { type: Number, default: 0 },
+      },
+    ],
+
     keywords: [{ type: String }],
     description: {
       type: String,
@@ -71,7 +89,7 @@ const artDetailsSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    InQueue:{
+    InQueue: {
       type: Boolean,
       default: false,
     },

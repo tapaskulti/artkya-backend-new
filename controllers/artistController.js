@@ -164,61 +164,6 @@ exports.updateProfileImages = async (req, res) => {
 };
 
 
-// exports.artAndArtistHomePage =async(req,res)=>{
-//   try {
-//     // Step 1: Get a random artist from the artistDetails collection
-//     const randomArtist = await Artist.aggregate([{ $sample: { size: 1 } }]);
-
-//     if (randomArtist.length === 0) {
-//       return res.status(404).json({ message: "No artist found." });
-//     }
-
-//     // Extract the artist's aboutMe and userId
-//     const artist = randomArtist[0];
-//     const { aboutMe, userId,profileImage } = artist;
-
-//     // Step 2: Run parallel tasks: 
-//     // 1. Get the artist's name from the user collection.
-//     // 2. Get up to 10 random artworks by this artist.
-//     const [user, artworks] = await Promise.all([
-//       // Fetch user details in parallel
-//       User.findById({ _id: userId }).select("firstName lastName _id"),
-      
-//       // Fetch artworks in parallel
-//       Art.aggregate([
-//         { $match: { artist: userId } }, // Filter artworks by artist's userId
-//         { $sample: { size: 10 } },      // Get random 10 artworks
-//         { $project: { title: 1, priceDetails: 1 ,thumbnail:1} },  // Select only required fields
-//       ])
-//     ]);
-
-//     if (!user) {
-//       return res.status(404).json({ message: "Artist user details not found." });
-//     }
-
-//     if (artworks.length < 4) {
-//       return res.status(404).json({ message: "This artist has less than 4 artworks." });
-//     }
-
-//     // Step 3: Construct the artist's full name
-//     const artistName = `${user.firstName} ${user.lastName}`;
-
-//     // Step 4: Send the response
-//     res.status(200).json({
-//       artist: {
-//         id:user?._id,
-//         name: artistName,
-//         aboutMe: aboutMe,
-//         profileImage:profileImage
-//       },
-//       artworks: artworks,  // Contains title and priceDetails of artworks
-//     });
-//   }catch (error) {
-//     return res.status(500).send({ success: false, message: error.message });
-//   }
-// }
-
-
 exports.artAndArtistHomePage = async (req, res) => {
   try {
     let randomArtist = await Artist.aggregate([{ $sample: { size: 1 } }]);
