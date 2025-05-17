@@ -218,8 +218,8 @@ exports.rejectArtwork = async (req, res) => {
 
 exports.approveArtwork = async (req, res) => {
   try {
-    const { id } = req.query;
-    const artwork = await ArtDetails.findById(id).populate("artist");
+    const { artId } = req.query;
+    const artwork = await ArtDetails.findOne({ _id: artId }).populate("artist");
 
     if (!artwork || artwork.isPublished) {
       return res.status(400).json({ message: "Invalid artwork" });
@@ -370,8 +370,6 @@ exports.updateCommissionForArtistPaintings = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
-
-
 
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
