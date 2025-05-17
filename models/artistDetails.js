@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 
+
 const artistDetailSchema = new mongoose.Schema(
   {
     userId: {
@@ -42,7 +43,6 @@ const artistDetailSchema = new mongoose.Schema(
     exibition: { type: String },
     // events: [{ type: String }],
     events: { type: String },
-
     dob: {
       type: String,
     },
@@ -88,10 +88,6 @@ const artistDetailSchema = new mongoose.Schema(
         "THE_OTHER_ART_FAIR",
       ],
     },
-    // artistNotes: {
-    //   type: mongoose.Schema.Types.ObjectId,
-    //   ref: "artistNotes",
-    // },
   },
   { timestamps: true }
 );

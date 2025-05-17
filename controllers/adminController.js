@@ -5,14 +5,11 @@ const path = require("path");
 const User = require("../models/user");
 const ArtistDetails = require("../models/artistDetails");
 const ArtDetails = require("../models/art");
+const { default: mongoose } = require("mongoose");
 
 // Get total users and total artists
 exports.getTotalUsersAndArtists = async (req, res) => {
   try {
-    // const totalUsers = await User.countDocuments();
-    // // const totalArtists = await User.countDocuments({ role: "ARTIST" });
-    // const totalArtists = await ArtistDetails.countDocuments();
-
     const [totalUsers, totalArtists] = await Promise.all([
       User.countDocuments(),
       ArtistDetails.countDocuments(),
@@ -36,13 +33,13 @@ exports.getAllUsers = async (req, res) => {
           _id: 1,
           name: { $concat: ["$firstName", " ", "$lastName"] },
           email: "$email",
-          role:"$role",
+          role: "$role",
           userType: {
-            $cond:{
-              if:"isArtist",
-              then:"ARTIST",
-              else:"USER"
-            }
+            $cond: {
+              if: "isArtist",
+              then: "ARTIST",
+              else: "USER",
+            },
           },
           joiningDate: "$createdAt",
           verified: {
@@ -50,7 +47,7 @@ exports.getAllUsers = async (req, res) => {
               if: "$isArtApprovalReq",
               then: "Unverified",
               else: "Verified",
-            }
+            },
           },
           status: {
             $cond: {
@@ -118,12 +115,12 @@ exports.getAllArtists = async (req, res) => {
               else: "Inactive",
             },
           },
-          originalCommission:"$artistDetails.originalPercent",
+          originalCommission: "$artistDetails.originalPercent",
           totalArtSold: { $size: "$soldArts" }, // Count of sold arts
           totalRevenue: { $sum: "$soldArts.totalPrice" }, // Sum of totalPrice from sold arts
         },
       },
-    ])
+    ]);
 
     return res.status(200).json({
       success: true,
@@ -157,14 +154,14 @@ exports.toggleUserStatus = async (req, res) => {
 };
 
 // Update Print Commission Percentage
-exports.updatePrintCommission = async (req, res) => {
+exports.updateCommission = async (req, res) => {
   try {
-    const { artistId } = req.query;
-    const { printPercent } = req.body;
+    let { artistId, originalPercent } = req.body;
+    originalPercent = parseInt(originalPercent);
 
     const artistDetails = await ArtistDetails.findOneAndUpdate(
       { userId: artistId },
-      { printPercent },
+      { originalPercent: originalPercent },
       { new: true }
     );
 
@@ -172,7 +169,9 @@ exports.updatePrintCommission = async (req, res) => {
       return res.status(404).json({ message: "Artist not found" });
     }
 
-    return res.status(200).json({ message: "Print commission updated", artistDetails });
+    return res
+      .status(200)
+      .json({ message: "Commission updated", artistDetails });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -192,7 +191,9 @@ exports.verifyArtist = async (req, res) => {
       return res.status(404).json({ message: "Artist not found" });
     }
 
-    return res.status(200).json({ message: "Artist verified by admin", artistDetails });
+    return res
+      .status(200)
+      .json({ message: "Artist verified by admin", artistDetails });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -217,8 +218,8 @@ exports.rejectArtwork = async (req, res) => {
 
 exports.approveArtwork = async (req, res) => {
   try {
-    const { id } = req.query;
-    const artwork = await ArtDetails.findById(id).populate("artist");
+    const { artId } = req.query;
+    const artwork = await ArtDetails.findOne({ _id: artId }).populate("artist");
 
     if (!artwork || artwork.isPublished) {
       return res.status(400).json({ message: "Invalid artwork" });
@@ -254,6 +255,118 @@ exports.approveArtwork = async (req, res) => {
     await artwork.save();
     return res.status(200).json({ message: "Artwork approved", artwork });
   } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getAllPainting = async (req, res) => {
+  try {
+    const paintings = await ArtDetails.aggregate([
+      {
+        $lookup: {
+          from: "users",
+          localField: "artist",
+          foreignField: "_id",
+          as: "artistInfo",
+        },
+      },
+      {
+        $unwind: {
+          path: "$artistInfo",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          _id: -1,
+          id: "$_id",
+          title: 1,
+          artist: {
+            $cond: {
+              if: { $ifNull: ["$artistInfo.firstName", false] },
+              then: {
+                $concat: ["$artistInfo.firstName", " ", "$artistInfo.lastName"],
+              },
+              else: "Unknown Artist",
+            },
+          },
+          price: "$priceDetails.price",
+          commission: "$commissionAmount",
+          status: {
+            $cond: {
+              if: { $eq: ["$isOriginalSold", true] },
+              then: "Sold",
+              else: "Available",
+            },
+          },
+          category: "$category",
+          uploadDate: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$createdAt",
+            },
+          },
+          approved: "$isPublished",
+          thumbnail: "$thumbnail.secure_url",
+        },
+      },
+    ]);
+
+    return res.status(200).json({ success: true, data: paintings });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+exports.updateCommissionForArtistPaintings = async (req, res) => {
+  try {
+    const { artistId } = req.query;
+
+    if (!mongoose.Types.ObjectId.isValid(artistId)) {
+      return res.status(400).json({ message: "Invalid artist ID" });
+    }
+
+    // Fetch the artist detail (with originalPercent)
+    const artist = await ArtistDetails.findOne({ userId: artistId });
+
+    if (!artist) {
+      return res.status(404).json({ message: "Artist not found" });
+    }
+
+    const originalPercent = artist.originalPercent || 20;
+
+    // Fetch all paintings by that artist
+    const paintings = await ArtDetails.find({ artist: artistId });
+
+    if (!paintings.length) {
+      return res
+        .status(404)
+        .json({ message: "No paintings found for this artist" });
+    }
+
+    // Update each painting with computed commissionAmount
+    const bulkOps = paintings.map((painting) => {
+      const price = painting?.priceDetails?.price || 0;
+      const commissionAmount = (originalPercent / 100) * price;
+      const isPublished = false;
+
+      return {
+        updateOne: {
+          filter: { _id: painting._id },
+          update: { commissionAmount, isPublished },
+        },
+      };
+    });
+
+    // Run all updates in bulk
+    await ArtDetails.bulkWrite(bulkOps);
+
+    return res.status(200).json({
+      message: "Commission amounts updated successfully",
+      updatedCount: bulkOps.length,
+    });
+  } catch (error) {
+    console.error("Error updating commissions:", error);
     return res.status(500).json({ message: error.message });
   }
 };
