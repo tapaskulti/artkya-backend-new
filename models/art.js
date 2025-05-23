@@ -51,13 +51,13 @@ const artDetailsSchema = new mongoose.Schema(
       currency: { type: String },
     },
     adminPrice: {
-      type: String,
+      type: String, //how much price admin will get by print art
     },
     commissionAmount: {
-      type: Number,
+      type: Number, //how much is the commision amount
     },
     totalPrice: {
-      type: Number,
+      type: Number, //commissionAmount + price
     },
 
     // Sales & Commission Details
@@ -79,7 +79,7 @@ const artDetailsSchema = new mongoose.Schema(
       type: Boolean,
     },
     isPublished: {
-      type: Boolean,
+      type: Boolean, //published true or nor
     },
     isAdultContent: {
       type: Boolean,
