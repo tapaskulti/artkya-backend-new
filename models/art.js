@@ -65,9 +65,9 @@ const artDetailsSchema = new mongoose.Schema(
     // Print copies tracking
     printCopies: [
       {
-        dimension: { type: String, required: true },
-        saleCount: { type: Number, default: 0 },
-        totalSales: { type: Number, default: 0 },
+        dimension: { type: String},
+        saleCount: { type: Number},
+        totalSales: { type: Number},
       },
     ],
 
@@ -80,6 +80,7 @@ const artDetailsSchema = new mongoose.Schema(
     },
     isPublished: {
       type: Boolean, //published true or nor
+      default: false,
     },
     isAdultContent: {
       type: Boolean,

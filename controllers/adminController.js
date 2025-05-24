@@ -159,21 +159,38 @@ exports.getTotalPaintings = async (req, res) => {
 // Get all user details
 exports.getAllUsers = async (req, res) => {
   try {
-    const userData = await User.aggregate([
+    const { search = ""  } = req.query
+    
+   const userData = await User.aggregate([
+    {
+      $match: {        
+        $or: [
+          { firstName: { $regex: search, $options: "i" } },
+          { lastName: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } },
+        ],
+      },
+    },
       {
         $project: {
           _id: 1,
           name: { $concat: ["$firstName", " ", "$lastName"] },
-          email: "$email",
-          role: "$role",
+          email: 1,
+          role: 1,
           userType: {
             $cond: {
-              if: "isArtist",
+              if: "$isArtist",
               then: "ARTIST",
               else: "USER",
             },
           },
-          joiningDate: "$createdAt",
+          joiningDate: {
+            $dateToString: {
+              format: "%d %b %Y",
+              date: "$createdAt",
+              timezone: "Asia/Kolkata",
+            },
+          },
           verified: {
             $cond: {
               if: "$isArtApprovalReq",
