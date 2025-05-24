@@ -389,6 +389,8 @@ exports.verifyArtist = async (req, res) => {
   }
 };
 
+
+
 // Reject artwork
 exports.rejectArtwork = async (req, res) => {
   try {
