@@ -8,7 +8,12 @@ exports.createArtist = async (req, res) => {
     const { userId, isArtist } = req.body;
     const createnewArtist = await Artist.create({ userId: userId });
 
-    await User.findOneAndUpdate({ _id: userId }, { isArtist: isArtist });
+    if (createnewArtist) {
+      await User.findOneAndUpdate(
+        { _id: userId },
+        { isArtist: isArtist, artist: createnewArtist?._id }
+      );
+    }
     if (!createnewArtist) {
       return res
         .status(401)
@@ -150,7 +155,6 @@ exports.updateProfileImages = async (req, res) => {
       { new: true }
     );
 
-
     if (updatedImage) {
       return res.status(200).send({
         success: true,
@@ -163,7 +167,6 @@ exports.updateProfileImages = async (req, res) => {
   }
 };
 
-
 exports.artAndArtistHomePage = async (req, res) => {
   try {
     let randomArtist = await Artist.aggregate([{ $sample: { size: 1 } }]);
@@ -172,7 +175,9 @@ exports.artAndArtistHomePage = async (req, res) => {
     if (randomArtist.length === 0) {
       randomArtist = await Artist.find().limit(1);
       if (randomArtist.length === 0) {
-        return res.status(404).json({ message: "No artist available in the database." });
+        return res
+          .status(404)
+          .json({ message: "No artist available in the database." });
       }
     }
 
@@ -194,7 +199,9 @@ exports.artAndArtistHomePage = async (req, res) => {
     ]);
 
     // Fallback to placeholder user if no user details are found
-    const artistName = user ? `${user.firstName} ${user.lastName}` : "Unknown Artist";
+    const artistName = user
+      ? `${user.firstName} ${user.lastName}`
+      : "Unknown Artist";
     const userIdFallback = user ? user._id : null;
 
     // Fallback message for artworks

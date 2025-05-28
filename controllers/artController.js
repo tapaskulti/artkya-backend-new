@@ -4,74 +4,177 @@ const draftModel = require("../models/draft");
 const userModel = require("../models/user");
 const { Client } = require("square");
 const crypto = require("crypto");
+const artistDetailsModel = require("../models/artistDetails");
+
 
 const { paymentsApi } = new Client({
   // accessToken: process.env.SQUARE_ACCESS_TOKEN,
 });
 
+// exports.createArt = async (req, res) => {
+//   console.log("req.body------->", req.body);
+
+//   priceDetail = {
+//     price: req.body?.price,
+//     offerPrice: req.body?.offerPrice,
+//   };
+//   req.body.medium = JSON.parse(req.body?.medium);
+//   req.body.materials = JSON.parse(req.body?.materials);
+//   req.body.styles = JSON.parse(req.body?.styles);
+//   req.body.priceDetails = priceDetail;
+
+//   try {
+//     const creatingArt = await artDetailModel.create(req.body);
+
+//     if (req.files?.images && Array.isArray(req.files.images)) {
+//       for (let i = 0; i < req.files.images.length; i++) {
+//         const singleImage = req.files.images[i];
+
+//         const uploadedImage = await cloudinary.v2.uploader.upload(
+//           singleImage.tempFilePath,
+//           { folder: "Arts_Images" }
+//         );
+
+//         if (uploadedImage) {
+//           await artDetailModel.findOneAndUpdate(
+//             { _id: creatingArt._id },
+//             {
+//               $push: {
+//                 art: {
+//                   id: uploadedImage.public_id,
+//                   secure_url: uploadedImage.secure_url,
+//                   order: i, // You can optionally store the order/index
+//                 },
+//               },
+//             }
+//           );
+//         }
+//       }
+//     }
+
+//     if (req.files.thumbnail) {
+//       const thumbnailFile = await cloudinary.v2.uploader.upload(
+//         req.files.thumbnail.tempFilePath,
+//         { folder: "Arts_Images" }
+//       );
+
+//       const imageThumbnail = {
+//         id: thumbnailFile.public_id,
+//         secure_url: thumbnailFile.secure_url,
+//       };
+
+//       await artDetailModel.findOneAndUpdate(
+//         { _id: creatingArt._id },
+//         { thumbnail: imageThumbnail }
+//       );
+//     }
+
+//     // Push art id in user Art
+//     await userModel.findOneAndUpdate(
+//       { _id: req.body.artist },
+//       { $push: { art: creatingArt._id } }
+//     );
+
+//     res.status(201).send({
+//       success: true,
+//       message: "Art Created Successfully",
+//     });
+//   } catch (error) {
+//     return res.status(500).send({ success: false, message: error.message });
+//   }
+// };
+
+
+
+// Pricing helper
+function calculateArtworkPricing(basePrice, commissionPercent) {
+  const commissionAmount = (basePrice * commissionPercent) / 100;
+  const totalPrice = basePrice + commissionAmount;
+  return { commissionAmount, totalPrice };
+}
+
 exports.createArt = async (req, res) => {
-  console.log("req.body------->", req.body);
-
-  priceDetail = {
-    price: req.body?.price,
-    offerPrice: req.body?.offerPrice,
-  };
-  req.body.medium = JSON.parse(req.body?.medium);
-  req.body.materials = JSON.parse(req.body?.materials);
-  req.body.styles = JSON.parse(req.body?.styles);
-  req.body.priceDetails = priceDetail;
-
   try {
+    const artistId = req.body.artist;
+
+    const artistDetails = await artistDetailsModel.findOne({ userId: artistId });
+    if (!artistDetails) {
+      return res.status(404).json({ message: "Artist details not found" });
+    }
+
+    const commissionPercent = artistDetails.originalPercent || 20;
+    const basePrice = parseFloat(req.body?.price);
+
+    req.body.medium = JSON.parse(req.body?.medium || "[]");
+    req.body.materials = JSON.parse(req.body?.materials || "[]");
+    req.body.styles = JSON.parse(req.body?.styles || "[]");
+
+    req.body.priceDetails = {
+      price: basePrice,
+      offerPrice: parseFloat(req.body?.offerPrice) || 0,
+    };
+
+    if (artistDetails.isArtApprovalReq === false) {
+      const { commissionAmount, totalPrice } = calculateArtworkPricing(
+        basePrice,
+        commissionPercent
+      );
+      req.body.commissionPercent = commissionPercent;
+      req.body.commissionAmount = commissionAmount;
+      req.body.totalPrice = totalPrice;
+      req.body.isPublished = true;
+    }
+
     const creatingArt = await artDetailModel.create(req.body);
 
+    // Parallel uploads for art images
+    let artUploads = [];
     if (req.files?.images && Array.isArray(req.files.images)) {
-      for (let i = 0; i < req.files.images.length; i++) {
-        const singleImage = req.files.images[i];
-
-        const uploadedImage = await cloudinary.v2.uploader.upload(
-          singleImage.tempFilePath,
-          { folder: "Arts_Images" }
-        );
-
-        if (uploadedImage) {
-          await artDetailModel.findOneAndUpdate(
-            { _id: creatingArt._id },
-            {
-              $push: {
-                art: {
-                  id: uploadedImage.public_id,
-                  secure_url: uploadedImage.secure_url,
-                  order: i, // You can optionally store the order/index
-                },
-              },
-            }
-          );
-        }
-      }
-    }
-
-    if (req.files.thumbnail) {
-      const thumbnailFile = await cloudinary.v2.uploader.upload(
-        req.files.thumbnail.tempFilePath,
-        { folder: "Arts_Images" }
-      );
-
-      const imageThumbnail = {
-        id: thumbnailFile.public_id,
-        secure_url: thumbnailFile.secure_url,
-      };
-
-      await artDetailModel.findOneAndUpdate(
-        { _id: creatingArt._id },
-        { thumbnail: imageThumbnail }
+      artUploads = req.files.images.map((image, index) =>
+        cloudinary.v2.uploader
+          .upload(image.tempFilePath, { folder: "Arts_Images" })
+          .then((uploaded) => ({
+            id: uploaded.public_id,
+            secure_url: uploaded.secure_url,
+            order: index,
+          }))
       );
     }
 
-    // Push art id in user Art
-    await userModel.findOneAndUpdate(
-      { _id: req.body.artist },
-      { $push: { art: creatingArt._id } }
-    );
+    // Upload thumbnail separately
+    let thumbnailUpload = null;
+    if (req.files?.thumbnail) {
+      thumbnailUpload = cloudinary.v2.uploader.upload(req.files.thumbnail.tempFilePath, {
+        folder: "Arts_Images",
+      });
+    }
+
+    const [artImages, thumbnail] = await Promise.all([
+      Promise.all(artUploads),
+      thumbnailUpload,
+    ]);
+
+    // Save art images if any
+    if (artImages.length > 0) {
+      await artDetailModel.findByIdAndUpdate(creatingArt._id, {
+        $push: { art: { $each: artImages } },
+      });
+    }
+
+    // Save thumbnail
+    if (thumbnail) {
+      await artDetailModel.findByIdAndUpdate(creatingArt._id, {
+        thumbnail: {
+          id: thumbnail.public_id,
+          secure_url: thumbnail.secure_url,
+        },
+      });
+    }
+
+    // Update user with art reference (non-blocking)
+    await userModel.findByIdAndUpdate(artistId, {
+      $push: { art: creatingArt._id },
+    });
 
     res.status(201).send({
       success: true,
@@ -81,6 +184,7 @@ exports.createArt = async (req, res) => {
     return res.status(500).send({ success: false, message: error.message });
   }
 };
+
 
 exports.createDraft = async (req, res) => {
   try {
@@ -153,8 +257,6 @@ exports.createDraft = async (req, res) => {
     return res.status(500).send({ success: false, message: error.message });
   }
 };
-
-// updateDraft
 
 exports.getAllArt = async (req, res) => {
   try {
@@ -281,8 +383,6 @@ exports.getArtByName = async (req, res) => {
 exports.getArtByArtist = async (req, res) => {
   try {
     const { artist } = req.query;
-    let artByName, artByArtist;
-
     console.log(artist.split(" ").join(""));
 
     const queryArtist = artist.split(" ").join("");

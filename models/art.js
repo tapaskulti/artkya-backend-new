@@ -53,6 +53,9 @@ const artDetailsSchema = new mongoose.Schema(
     adminPrice: {
       type: String, //how much price admin will get by print art
     },
+    commissionPercent: {
+      type: Number, //how much is the commision Percent
+    },
     commissionAmount: {
       type: Number, //how much is the commision amount
     },

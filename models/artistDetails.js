@@ -57,7 +57,7 @@ const artistDetailSchema = new mongoose.Schema(
     },
     isVerified: {
       type: Boolean,
-    },
+    },   
     isArtApprovalReq: {
       type: Boolean,
     },

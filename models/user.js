@@ -79,6 +79,10 @@ const userSchema = new mongoose.Schema(
         ref: "art",
       },
     ],
+    artist: {
+      type: ObjectId,
+      ref: "artistDetails",
+    },
     wishlist: {
       type: ObjectId,
       ref: "wishlist",

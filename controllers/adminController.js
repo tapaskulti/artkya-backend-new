@@ -156,11 +156,11 @@ exports.getTotalPaintings = async (req, res) => {
   });
 };
 
-// Get all user details
+// Get all user details with search
 exports.getAllUsers = async (req, res) => {
   try {
     const { search = ""  } = req.query
-    
+
    const userData = await User.aggregate([
     {
       $match: {        
@@ -215,7 +215,7 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-// Get all artist details
+// Get all artist details with search
 exports.getAllArtists = async (req, res) => {
   try {
     const { search = "" } = req.query;
@@ -276,7 +276,7 @@ exports.getAllArtists = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
-
+// Get all Painting details with search
 exports.getAllPainting = async (req, res) => {
   try {
     const paintings = await ArtDetails.aggregate([
@@ -390,7 +390,7 @@ exports.verifyArtist = async (req, res) => {
     const { artistId } = req.query;
     const artistDetails = await ArtistDetails.findOneAndUpdate(
       { userId: artistId },
-      { isVerified: true },
+      { isVerified: true,isArtApprovalReq:false },
       { new: true }
     );
 
@@ -425,50 +425,69 @@ exports.rejectArtwork = async (req, res) => {
   }
 };
 
+function calculateArtworkPricing(basePrice, commissionPercent) {
+  const commissionAmount = (basePrice * commissionPercent) / 100;
+  const totalPrice = basePrice + commissionAmount;
+  return { commissionAmount, totalPrice };
+}
 exports.approveArtwork = async (req, res) => {
   try {
     const { artId } = req.query;
-    const artwork = await ArtDetails.findOne({ _id: artId }).populate("artist");
 
+    const artwork = await ArtDetails.findOne({ _id: artId }).populate("artist");
     if (!artwork || artwork.isPublished) {
-      return res.status(400).json({ message: "Invalid artwork" });
+      return res.status(400).json({ message: "Invalid or already approved artwork" });
     }
 
-    const artistDetails = await ArtistDetails.findOne({
-      userId: artwork.artist._id,
-    });
+    const artist = artwork.artist;
+    const artistDetails = await ArtistDetails.findOne({ userId: artist._id });
 
     if (!artistDetails) {
       return res.status(404).json({ message: "Artist details not found" });
     }
 
     const approvedArtworks = await ArtDetails.countDocuments({
-      artist: artwork.artist._id,
+      artist: artist._id,
       isPublished: true,
     });
 
-    // Auto-approve if artist has 3 verified artworks
+    // If artist has 3+ approved artworks, disable future approvals
     if (approvedArtworks >= 3 || artistDetails.isVerified) {
+      artistDetails.isArtApprovalReq = false;
+      await artistDetails.save();
+
       artwork.isPublished = true;
+      const { commissionAmount, totalPrice } = calculateArtworkPricing(
+        artwork.priceDetails.price,
+        artistDetails.originalPercent || 20 // fallback if not set
+      );
+
+      artwork.commissionPercent = artistDetails.originalPercent;
+      artwork.commissionAmount = commissionAmount;
+      artwork.totalPrice = totalPrice;
+
       await artwork.save();
       return res.json({ message: "Artwork auto-approved", artwork });
     }
 
-    // check
-    const adminCommission =
-      (artwork.priceDetails.price * artistDetails.originalPercent) / 100;
+    // Approve with pricing logic
     artwork.isPublished = true;
-    artwork.adminPrice = adminCommission;
-    artwork.totalPrice = artwork.priceDetails.price + adminCommission + 20; // GST
+    const { commissionAmount, totalPrice } = calculateArtworkPricing(
+      artwork.priceDetails.price,
+      artistDetails.originalPercent || 20
+    );
+
+    artwork.commissionPercent = artistDetails.originalPercent;
+    artwork.commissionAmount = commissionAmount;
+    artwork.totalPrice = totalPrice;
 
     await artwork.save();
+
     return res.status(200).json({ message: "Artwork approved", artwork });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
 };
-
-
 
 exports.updateCommissionForArtistPaintings = async (req, res) => {
   try {
@@ -485,7 +504,7 @@ exports.updateCommissionForArtistPaintings = async (req, res) => {
       return res.status(404).json({ message: "Artist not found" });
     }
 
-    const originalPercent = artist.originalPercent || 20;
+    const originalPercent = artist.originalPercent || 30;
 
     // Fetch all paintings by that artist
     const paintings = await ArtDetails.find({ artist: artistId });
