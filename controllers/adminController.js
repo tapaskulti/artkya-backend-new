@@ -363,11 +363,11 @@ exports.toggleUserStatus = async (req, res) => {
 // Update Print Commission Percentage
 exports.updateArtistCommission = async (req, res) => {
   try {
-    let { artistId, originalPercent } = req.body;
+    let { userId, originalPercent } = req.body;
     originalPercent = parseInt(originalPercent);
 
     const artistDetails = await ArtistDetails.findOneAndUpdate(
-      { userId: artistId },
+      { userId: userId },
       { originalPercent: originalPercent },
       { new: true }
     );
@@ -387,9 +387,9 @@ exports.updateArtistCommission = async (req, res) => {
 // Directly verify an artist (Admin privilege)
 exports.verifyArtist = async (req, res) => {
   try {
-    const { artistId } = req.query;
+    const { userId } = req.query;
     const artistDetails = await ArtistDetails.findOneAndUpdate(
-      { userId: artistId },
+      { userId: userId },
       { isVerified: true,isArtApprovalReq:false },
       { new: true }
     );
@@ -485,59 +485,6 @@ exports.approveArtwork = async (req, res) => {
 
     return res.status(200).json({ message: "Artwork approved", artwork });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-};
-
-exports.updateCommissionForArtistPaintings = async (req, res) => {
-  try {
-    const { artistId } = req.query;
-
-    if (!mongoose.Types.ObjectId.isValid(artistId)) {
-      return res.status(400).json({ message: "Invalid artist ID" });
-    }
-
-    // Fetch the artist detail (with originalPercent)
-    const artist = await ArtistDetails.findOne({ userId: artistId });
-
-    if (!artist) {
-      return res.status(404).json({ message: "Artist not found" });
-    }
-
-    const originalPercent = artist.originalPercent || 30;
-
-    // Fetch all paintings by that artist
-    const paintings = await ArtDetails.find({ artist: artistId });
-
-    if (!paintings.length) {
-      return res
-        .status(404)
-        .json({ message: "No paintings found for this artist" });
-    }
-
-    // Update each painting with computed commissionAmount
-    const bulkOps = paintings.map((painting) => {
-      const price = painting?.priceDetails?.price || 0;
-      const commissionAmount = (originalPercent / 100) * price;
-      const isPublished = false;
-
-      return {
-        updateOne: {
-          filter: { _id: painting._id },
-          update: { commissionAmount, isPublished },
-        },
-      };
-    });
-
-    // Run all updates in bulk
-    await ArtDetails.bulkWrite(bulkOps);
-
-    return res.status(200).json({
-      message: "Commission amounts updated successfully",
-      updatedCount: bulkOps.length,
-    });
-  } catch (error) {
-    console.error("Error updating commissions:", error);
     return res.status(500).json({ message: error.message });
   }
 };

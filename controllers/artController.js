@@ -6,7 +6,6 @@ const { Client } = require("square");
 const crypto = require("crypto");
 const artistDetailsModel = require("../models/artistDetails");
 
-
 const { paymentsApi } = new Client({
   // accessToken: process.env.SQUARE_ACCESS_TOKEN,
 });
@@ -84,8 +83,6 @@ const { paymentsApi } = new Client({
 //   }
 // };
 
-
-
 // Pricing helper
 function calculateArtworkPricing(basePrice, commissionPercent) {
   const commissionAmount = (basePrice * commissionPercent) / 100;
@@ -97,7 +94,9 @@ exports.createArt = async (req, res) => {
   try {
     const artistId = req.body.artist;
 
-    const artistDetails = await artistDetailsModel.findOne({ userId: artistId });
+    const artistDetails = await artistDetailsModel.findOne({
+      userId: artistId,
+    });
     if (!artistDetails) {
       return res.status(404).json({ message: "Artist details not found" });
     }
@@ -144,9 +143,12 @@ exports.createArt = async (req, res) => {
     // Upload thumbnail separately
     let thumbnailUpload = null;
     if (req.files?.thumbnail) {
-      thumbnailUpload = cloudinary.v2.uploader.upload(req.files.thumbnail.tempFilePath, {
-        folder: "Arts_Images",
-      });
+      thumbnailUpload = cloudinary.v2.uploader.upload(
+        req.files.thumbnail.tempFilePath,
+        {
+          folder: "Arts_Images",
+        }
+      );
     }
 
     const [artImages, thumbnail] = await Promise.all([
@@ -184,7 +186,6 @@ exports.createArt = async (req, res) => {
     return res.status(500).send({ success: false, message: error.message });
   }
 };
-
 
 exports.createDraft = async (req, res) => {
   try {
@@ -622,7 +623,6 @@ exports.newFilterArt = async (req, res) => {
       searchquery.artistFullName = { $regex: searchInput, $options: "i" }; // Case insensitive search for artist name
     }
 
-     
     // Check if there are no filters or search applied
     const noFiltersApplied =
       !searchCriteria &&
@@ -639,17 +639,22 @@ exports.newFilterArt = async (req, res) => {
     // If no filters are applied, return all arts using a simple find query with sorting
     if (noFiltersApplied) {
       filteredArts = await artDetailModel
-        .find()
+        .find({ isPublished: true })
         .populate({
           path: "artist",
           select: { firstName: 1, lastName: 1 },
         })
-        .sort(sortOption)// Default sorting if no sort criteria
+        .sort(sortOption); // Default sorting if no sort criteria
 
       console.log("All arts returned (no filters)==========>", filteredArts);
     } else {
       // Use aggregation if there are filters or search criteria
       const pipeline = [
+        {
+          $match: {
+            isPublished: true,
+          },
+        },
         {
           $lookup: {
             from: "users", // Artist collection name
@@ -689,17 +694,17 @@ exports.newFilterArt = async (req, res) => {
                 ],
               },
             },
-            artistCountry: "$artistDetails.country"
+            artistCountry: "$artistDetails.country",
           },
         },
         {
           $match: {
             ...query, // Apply the filters
-            ...searchquery, // Apply the search query            
+            ...searchquery, // Apply the search query
           },
         },
       ];
-      
+
       if (artistCountry && artistCountry.length > 0) {
         pipeline.push({
           $match: {
@@ -730,5 +735,3 @@ exports.newFilterArt = async (req, res) => {
     return res.status(500).send({ success: false, message: error.message });
   }
 };
-
-

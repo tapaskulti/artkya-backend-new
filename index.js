@@ -7,6 +7,9 @@ const bodyParser = require("body-parser");
 const cloudinary = require("cloudinary");
 const fileUpload = require("express-fileupload");
 const connectWithMongodb = require("./config/db");
+const { Client, Environment } = require('squareup');
+
+
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
