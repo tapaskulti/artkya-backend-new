@@ -7,7 +7,7 @@ const bodyParser = require("body-parser");
 const cloudinary = require("cloudinary");
 const fileUpload = require("express-fileupload");
 const connectWithMongodb = require("./config/db");
-const { Client, Environment } = require('squareup');
+const { Client, Environment } = require('square');
 
 
 
@@ -74,6 +74,7 @@ app.use("/api/v1/cart", require("./routes/cart"));
 app.use("/api/v1/wishlist", require("./routes/wishlist"));
 app.use("/api/v1/artist", require("./routes/artist"));
 app.use("/api/v1/admin", require("./routes/admin"));
+app.use("/api/v1/payment", require("./routes/payment"));
 
 
 
