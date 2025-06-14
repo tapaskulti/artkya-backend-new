@@ -1,6 +1,6 @@
 const Order = require("../models/order");
 
-exports.createOrder = async (req, res) => {
+const createOrders = async (req, res) => {
   try {
     const {
       buyerId,
@@ -9,6 +9,7 @@ exports.createOrder = async (req, res) => {
       billingAddress,
       sameAsShipping,
       totalAmount,
+      totalItems,
       paymentId,
       paymentMethod,
       orderType,
@@ -34,6 +35,7 @@ exports.createOrder = async (req, res) => {
       billingAddress: sameAsShipping ? shippingAddress : billingAddress,
       sameAsShipping,
       totalAmount,
+      totalItems,
       paymentStatus: "paid",
       orderStatus: "confirmed",
       status: "transit",
@@ -140,7 +142,7 @@ const getUserOrders = async (req, res) => {
 };
 
 module.exports = {
-  createOrder,
+  createOrders,
   getOrderById,
   getUserOrders,
 };
