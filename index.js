@@ -74,7 +74,7 @@ app.use("/api/v1/cart", require("./routes/cart"));
 app.use("/api/v1/wishlist", require("./routes/wishlist"));
 app.use("/api/v1/artist", require("./routes/artist"));
 app.use("/api/v1/admin", require("./routes/admin"));
-app.use("/api/v1/payment", require("./routes/payment"));
+app.use("/api/v1/pay", require("./routes/payment"));
 
 
 

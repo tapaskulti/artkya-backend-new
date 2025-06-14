@@ -1,28 +1,30 @@
 const { Client, Environment, ApiError } = require("square");
+const crypto = require('crypto');
 
 const squareClient = new Client({
-  // environment: process.env.SQUARE_ENVIRONMENT === 'production'
-  //   ? Environment.Production
-  //   : Environment.Sandbox,
+  environment: process.env.SQUARE_ENVIRONMENT === 'production'
+    ? Environment.Production
+    : Environment.Sandbox,
   accessToken: process.env.SQUARE_ACCESS_TOKEN,
 });
 
-const generateIdempotencyKey = () =>
-  `payment_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+// const generateIdempotencyKey = () =>
+//   `payment_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
 
 exports.payment = async (req, res) => {
   try {
     const { sourceId, amount, currency = "USD", billingAddress } = req.body;
-
-    const response = await squareClient.paymentsApi.createPayment({
-      idempotencyKey: generateIdempotencyKey,
-      sourceId: sourceId,
-      amountMoney: {
-        currency: currency,
+    
+    const response = {
+      source_id: sourceId,
+      amount_money: {
         amount: amount,
+        currency: currency
       },
-    });
-    console.log(result);
+      idempotency_key:  crypto.randomUUID(),
+      location_id: process.env.SQUARE_LOCATION_ID
+    };
+    console.log("result========>",response.result);
 
     return res.json({
       success: true,
