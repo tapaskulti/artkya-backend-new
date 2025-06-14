@@ -52,12 +52,6 @@ exports.addToCart = async (req, res) => {
 
     findCart.totalItems = totalItems;
 
-    // findCart?.arts?.map((singleArt)=>{
-    //   console.log("price----->",singleArt);
-    //   totalCost === totalCost+singleArt?.price
-    //   console.log("totalCost----->",totalCost);
-    // })
-
     findCart.totalPrice = parseInt(findCart.totalPrice) + parseInt(artPrice);
 
     console.log(findCart, totalItems);
@@ -125,6 +119,28 @@ exports.cartByUserId = async (req, res) => {
 
     const findCart = await cartModel.findOne({ userId }).populate("arts");
 
+    return res.status(200).send({
+      success: true,
+      data: findCart,
+    });
+  } catch (error) {
+    return res.status(500).send({ success: false, message: error.message });
+  }
+};
+
+
+
+exports.clearCartByUserId = async (req, res) => {
+  try {
+    const { userId} = req.query;
+
+    const findCart = await cartModel.findOne({ userId }).populate("arts");
+
+    findCart.totalPrice = 0
+    findCart.totalItems = 0
+    findCart.arts = []
+    
+    findCart.save()
     return res.status(200).send({
       success: true,
       data: findCart,

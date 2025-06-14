@@ -12,51 +12,49 @@ const orderSchema = new mongoose.Schema(
     billingAddress: {
       type: Object,
     },
-    paymentMode: {
-      type: String,
-    },
-    // to check the order is within return policy
-    isOpenOrder: {
-      type: Object,
-    },
-    artId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "art",
-    },
-    artistId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "artistDetails",
-    },
-    artType :{
-      type: String,      
-      enum: ["Original","Print"],
-    },
-    returnable: {
+    sameAsShipping: {
       type: Boolean,
-      default: true,
+      default: false,
+    },
+    artId: [
+      {
+        type: ObjectId,
+        ref: "artDetails",
+        required: true,
+      },
+    ],
+    // Total Order Amount
+    totalAmount: {
+      type: Number,
+      required: true,
     },
     cancelled: {
       type: Boolean,
       default: false,
     },
+    // Payment Status
+    paymentStatus: {
+      type: String,
+      enum: ["paid", "pending", "failed"],
+      default: "paid",
+    },
     status: {
       type: String,
       default: "transit",
-      enum: ["transit","delivered", "returned"],
+      enum: ["transit", "delivered", "returned"],
       trim: true,
     },
     orderStatus: {
       type: String,
-      default: "pending",
-      enum: ["cancelled","returned","completed"],
-      trim: true,
+      enum: ["confirmed", "processing", "shipped", "delivered", "cancelled"],
+      default: "confirmed",
     },
-    returnedStatus: {
-      type: String,
-      default: "transit",
-      enum: ["transit","recieved", "verified","refund_Initiated","refunded"],
-      trim: true,
-    },
+    // returnedStatus: {
+    //   type: String,
+    //   default: "transit",
+    //   enum: ["transit", "recieved", "verified", "refund_Initiated", "refunded"],
+    //   trim: true,
+    // },
   },
   { timestamps: true }
 );
