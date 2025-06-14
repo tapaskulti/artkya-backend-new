@@ -7,9 +7,7 @@ const bodyParser = require("body-parser");
 const cloudinary = require("cloudinary");
 const fileUpload = require("express-fileupload");
 const connectWithMongodb = require("./config/db");
-const { Client, Environment } = require('square');
-
-
+const { Client, Environment } = require("square");
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -31,10 +29,10 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-app.get("/",(req,res)=>{
-  console.log("Server Connected successfully")
-  res.send({message:"Server Connected successfully"})
-})
+app.get("/", (req, res) => {
+  console.log("Server Connected successfully");
+  res.send({ message: "Server Connected successfully" });
+});
 
 connectWithMongodb();
 
@@ -45,7 +43,7 @@ const allowedDomains = [
   // "http://localhost:5175",
 ];
 
-app.use(cors())
+app.use(cors());
 // app.use(
 //   cors({
 //     origin: function (origin, callback) {
@@ -65,20 +63,17 @@ app.use(cors())
 //   })
 // );
 
-
 // import routes
 app.use("/api/v1/user", require("./routes/user"));
 app.use("/api/v1/art", require("./routes/art"));
 app.use("/api/v1/cart", require("./routes/cart"));
-// app.use("/api/v1/collection", require("./routes/collection"));
+app.use("/api/v1/order", require("./routes/order"));
 app.use("/api/v1/wishlist", require("./routes/wishlist"));
 app.use("/api/v1/artist", require("./routes/artist"));
 app.use("/api/v1/admin", require("./routes/admin"));
 app.use("/api/v1/pay", require("./routes/payment"));
 
-
-
-const PORT = process.env.PORT
+const PORT = process.env.PORT;
 app.listen(PORT, () => {
   console.log(`Server started on port ${PORT}`);
 });

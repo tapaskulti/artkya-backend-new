@@ -6,6 +6,7 @@ const User = require("../models/user");
 const ArtistDetails = require("../models/artistDetails");
 const ArtDetails = require("../models/art");
 const { default: mongoose } = require("mongoose");
+const Order = require("../models/order");
 
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
@@ -486,5 +487,49 @@ exports.approveArtwork = async (req, res) => {
     return res.status(200).json({ message: "Artwork approved", artwork });
   } catch (error) {
     return res.status(500).json({ message: error.message });
+  }
+};
+
+
+
+exports.getAllOrders = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, status } = req.query;
+
+    let query = {};
+    if (status) query.orderStatus = status;
+
+    const orders = await Order.find(query)
+      .populate('buyerId', 'firstName lastName email')
+      .populate({
+        path: 'artId',
+        populate: {
+          path: 'artist',
+          select: 'firstName lastName'
+        }
+      })
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await Order.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        orders,
+        currentPage: page,
+        totalPages: Math.ceil(total / limit),
+        totalOrders: total
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching all orders:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch orders',
+      error: error.message
+    });
   }
 };

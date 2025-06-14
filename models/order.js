@@ -18,7 +18,7 @@ const orderSchema = new mongoose.Schema(
     },
     artId: [
       {
-        type: ObjectId,
+        type: mongoose.Schema.Types.ObjectId,
         ref: "artDetails",
         required: true,
       },
