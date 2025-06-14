@@ -1,4 +1,5 @@
 const Order = require("../models/order");
+const ArtDetails = require("../models/art");
 
 const createOrders = async (req, res) => {
   try {
@@ -28,6 +29,9 @@ const createOrders = async (req, res) => {
       });
     }
 
+    console.log(req.body)
+
+
     const newOrder = new Order({
       buyerId,
       artId: artIds,
@@ -45,7 +49,7 @@ const createOrders = async (req, res) => {
 
     if (createOrder) {
       const updatePromises = artIds?.map(async (singleArtId) => {
-        const findArt = await artistDetails
+        const findArt = await ArtDetails
           .findOne({ _id: singleArtId })
           .select({
             isOriginalSold: 1,
