@@ -59,8 +59,11 @@ const artDetailsSchema = new mongoose.Schema(
     commissionAmount: {
       type: Number, //how much is the commision amount
     },
+    commissionAmount: {
+      type: Number,
+    },
     totalPrice: {
-      type: Number, //commissionAmount + price
+      type: Number,
     },
 
     // Sales & Commission Details
