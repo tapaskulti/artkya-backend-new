@@ -3,12 +3,8 @@ const artDetailModel = require("../models/art");
 const draftModel = require("../models/draft");
 const userModel = require("../models/user");
 const { Client } = require("square");
-<<<<<<< HEAD
-const { randomUUID } = require("crypto");
-=======
 const crypto = require("crypto");
 const artistDetailsModel = require("../models/artistDetails");
->>>>>>> 44a8ac1cb81ea42b0bb950a237ba5821c7fd65a8
 
 const { paymentsApi } = new Client({
   // accessToken: process.env.SQUARE_ACCESS_TOKEN,
