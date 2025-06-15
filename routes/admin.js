@@ -10,6 +10,7 @@ const {
   approveArtwork,
   getAllPainting,
   updateArtistCommission,
+  getAllOrdersAdmin,
 } = require("../controllers/adminController");
 const router = express.Router();
 
@@ -22,7 +23,7 @@ router.route("/updateCommission").patch(updateArtistCommission);
 router.route("/verifyArtist").patch(verifyArtist);
 router.route("/rejectArtwork").patch(rejectArtwork);
 router.route("/approveArtwork").patch(approveArtwork);
-router.route("/getAllPainting").get(getAllPainting);
+router.route("/getAllOrdersAdmin").get(getAllOrdersAdmin);
 
 
 module.exports = router;

@@ -490,42 +490,263 @@ exports.approveArtwork = async (req, res) => {
   }
 };
 
-
-
-exports.getAllOrders = async (req, res) => {
+const getAdminDashboardStats = async () => {
   try {
-    const { page = 1, limit = 10, status } = req.query;
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const startOfWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
-    let query = {};
-    if (status) query.orderStatus = status;
-
-    const orders = await Order.find(query)
-      .populate('buyerId', 'firstName lastName email')
-      .populate({
-        path: 'artId',
-        populate: {
-          path: 'artist',
-          select: 'firstName lastName'
+    const [
+      totalOrders,
+      todayOrders,
+      weekOrders,
+      monthOrders,
+      totalRevenue,
+      avgOrderValue,
+      statusBreakdown,
+      topArtworks
+    ] = await Promise.all([
+      Order.countDocuments(),
+      Order.countDocuments({ createdAt: { $gte: startOfToday } }),
+      Order.countDocuments({ createdAt: { $gte: startOfWeek } }),
+      Order.countDocuments({ createdAt: { $gte: startOfMonth } }),
+      Order.aggregate([
+        { $match: { paymentStatus: 'paid' } },
+        { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+      ]),
+      Order.aggregate([
+        { $match: { paymentStatus: 'paid' } },
+        { $group: { _id: null, avg: { $avg: '$totalAmount' } } }
+      ]),
+      Order.aggregate([
+        {
+          $group: {
+            _id: '$orderStatus',
+            count: { $sum: 1 }
+          }
         }
-      })
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+      ]),
+      Order.aggregate([
+        { $unwind: '$artId' },
+        {
+          $group: {
+            _id: '$artId',
+            orderCount: { $sum: 1 }
+          }
+        },
+        { $sort: { orderCount: -1 } },
+        { $limit: 5 },
+        {
+          $lookup: {
+            from: 'artdetails',
+            localField: '_id',
+            foreignField: '_id',
+            as: 'artwork'
+          }
+        }
+      ])
+    ]);
 
-    const total = await Order.countDocuments(query);
+    return {
+      overview: {
+        totalOrders,
+        todayOrders,
+        weekOrders,
+        monthOrders,
+        totalRevenue: totalRevenue[0]?.total || 0,
+        avgOrderValue: avgOrderValue[0]?.avg || 0
+      },
+      statusBreakdown: statusBreakdown.reduce((acc, item) => {
+        acc[item._id] = item.count;
+        return acc;
+      }, {}),
+      topArtworks: topArtworks.map(item => ({
+        id: item._id,
+        title: item.artwork[0]?.title || 'Unknown',
+        orders: item.orderCount
+      }))
+    };
+  } catch (error) {
+    console.error('Error getting admin stats:', error);
+    return {};
+  }
+};
+
+
+
+exports.getAllOrdersAdmin = async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 20, 
+      status, 
+      paymentStatus,
+      search,
+      dateFrom,
+      dateTo,
+      minAmount,
+      maxAmount,
+      sortBy = 'createdAt', 
+      sortOrder = 'desc' 
+    } = req.query;
+
+    // Build complex query
+    const query = {};
+    
+    // Status filters
+    if (status) query.orderStatus = status;
+    if (paymentStatus) query.paymentStatus = paymentStatus;
+    
+    // Date range filter
+    if (dateFrom || dateTo) {
+      query.createdAt = {};
+      if (dateFrom) query.createdAt.$gte = new Date(dateFrom);
+      if (dateTo) query.createdAt.$lte = new Date(dateTo);
+    }
+    
+    // Amount range filter
+    if (minAmount || maxAmount) {
+      query.totalAmount = {};
+      if (minAmount) query.totalAmount.$gte = parseFloat(minAmount);
+      if (maxAmount) query.totalAmount.$lte = parseFloat(maxAmount);
+    }
+
+    // Build sort object
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    // Base aggregation pipeline
+    let pipeline = [
+      { $match: query },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'buyerId',
+          foreignField: '_id',
+          as: 'buyer'
+        }
+      },
+      {
+        $lookup: {
+          from: 'artdetails',
+          localField: 'artId',
+          foreignField: '_id',
+          as: 'artworks'
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'artworks.artist',
+          foreignField: '_id',
+          as: 'artists'
+        }
+      }
+    ];
+
+    // Add search functionality
+    if (search) {
+      pipeline.push({
+        $match: {
+          $or: [
+            { 'buyer.firstName': { $regex: search, $options: 'i' } },
+            { 'buyer.lastName': { $regex: search, $options: 'i' } },
+            { 'buyer.email': { $regex: search, $options: 'i' } },
+            { 'artworks.title': { $regex: search, $options: 'i' } },
+            { '_id': { $regex: search.replace(/[^a-fA-F0-9]/g, ''), $options: 'i' } }
+          ]
+        }
+      });
+    }
+
+    // Add sorting and pagination
+    pipeline.push(
+      { $sort: sort },
+      { $skip: (page - 1) * limit },
+      { $limit: parseInt(limit) }
+    );
+
+    const orders = await Order.aggregate(pipeline);
+    
+    // Get total count for pagination
+    const totalPipeline = [...pipeline.slice(0, -2)]; // Remove skip and limit
+    totalPipeline.push({ $count: "total" });
+    const totalResult = await Order.aggregate(totalPipeline);
+    const total = totalResult[0]?.total || 0;
+
+    // Transform data for admin view
+    const transformedOrders = orders.map(order => ({
+      orderId: order._id,
+      orderNumber: order._id.toString().slice(-8).toUpperCase(),
+      orderDate: order.createdAt,
+      lastUpdated: order.updatedAt,
+      status: {
+        payment: order.paymentStatus,
+        order: order.orderStatus,
+        shipping: order.status
+      },
+      totals: {
+        amount: order.totalAmount,
+        items: order.totalItems || order.artId.length,
+        currency: 'USD'
+      },
+      customer: {
+        id: order.buyer[0]?._id,
+        name: `${order.buyer[0]?.firstName} ${order.buyer[0]?.lastName}`,
+        email: order.buyer[0]?.email,
+        avatar: order.buyer[0]?.avatar?.secure_url,
+        isVerified: order.buyer[0]?.isActive
+      },
+      shipping: {
+        address: order.shippingAddress,
+        sameAsBilling: order.sameAsShipping
+      },
+      artworks: order.artworks.map(art => {
+        const artist = order.artists.find(a => a._id.toString() === art.artist?.toString());
+        return {
+          id: art._id,
+          title: art.title,
+          thumbnail: art.thumbnail?.secure_url || '',
+          artist: {
+            id: artist?._id,
+            name: artist ? `${artist.firstName} ${artist.lastName}` : 'Unknown Artist'
+          },
+          price: {
+            amount: art.priceDetails?.price || 0,
+            currency: art.priceDetails?.currency || 'USD'
+          },
+          category: art.category
+        };
+      }),
+      flags: {
+        cancelled: order.cancelled,
+        needsAttention: order.orderStatus === 'processing' && 
+                       new Date() - new Date(order.createdAt) > 24 * 60 * 60 * 1000, // 24 hours
+        highValue: order.totalAmount > 500
+      }
+    }));
+
+    // Get dashboard statistics
+    const stats = await getAdminDashboardStats();
 
     res.status(200).json({
       success: true,
       data: {
-        orders,
-        currentPage: page,
-        totalPages: Math.ceil(total / limit),
-        totalOrders: total
+        orders: transformedOrders,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(total / limit),
+          totalOrders: total,
+          hasNextPage: page < Math.ceil(total / limit),
+          hasPrevPage: page > 1
+        },
+        stats
       }
     });
 
   } catch (error) {
-    console.error('Error fetching all orders:', error);
+    console.error('Error fetching admin orders:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch orders',

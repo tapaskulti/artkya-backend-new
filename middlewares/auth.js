@@ -10,15 +10,9 @@ const auth = (req, res, next) => {
         .status(400)
         .send({ success: false, message: "token is missing" });
     }
-    // const user = jwt.verify(token, process.env.JWT_SECRET_ACCESS_TOKEN);
-    // if (!user) {
-    //   return res
-    //     .status(400)
-    //     .send({ sucess: false, message: "Invalid Authentication" });
-    // }
     jwt.verify(token, process.env.JWT_SECRET_ACCESS_TOKEN, (err, user) => {
-      console.log(user);
-      console.log(err);
+      // console.log("user====>",user);
+      // console.log(err);
       if (err) {
         return res
           .status(400)
