@@ -2,7 +2,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/user");
 const cloudinary = require("cloudinary");
-const ArtistDetails = require("../models/artistDetails")
+const ArtistDetails = require("../models/artistDetails");
 //creating Refresh Token
 const createRefreshToken = (payload) => {
   return jwt.sign(payload, process.env.JWT_SECRET_REFRESH_TOKEN, {
@@ -131,8 +131,8 @@ exports.login = async (req, res) => {
         message: "password didnot match,Try Again!!",
       });
     } else {
-      refresh_Token = createRefreshToken({ id: user._id });
-      console.log(refresh_Token);
+      refresh_Token = createRefreshToken({ id: user._id, userRole: user.role });
+      console.log("refresh_Token========>",refresh_Token);
 
       await User.findOneAndUpdate(
         { email },
@@ -166,8 +166,6 @@ exports.getAccessToken = async (req, res) => {
       });
     }
 
-    // console.log(rf_token, "<------------rf_token");
-
     if (!rf_token) {
       return res.send({ success: false, message: "Please login again" });
     }
@@ -185,7 +183,10 @@ exports.getAccessToken = async (req, res) => {
         .send({ success: false, message: "Please login again" });
     }
 
-    const access_Token = createAccessToken({ _id: logInUser.id });
+    const access_Token = createAccessToken({
+      _id: logInUser.id,
+      userRole: logInUser.role,
+    });
     // console.log("access_Token------------------>", access_Token);
 
     return res.status(200).send({ success: true, accessToken: access_Token });
@@ -283,7 +284,6 @@ exports.updateUserAddress = async (req, res) => {
 
 // Reset Password
 
-
 exports.uploadUserAvatar = async (req, res) => {
   try {
     const { userId } = req.query;
@@ -295,7 +295,7 @@ exports.uploadUserAvatar = async (req, res) => {
       });
     }
 
-    console.log("req.files.avatar==>",req.files.avatar)
+    console.log("req.files.avatar==>", req.files.avatar);
     const avatarFile = await cloudinary.v2.uploader.upload(
       req.files.avatar.tempFilePath,
       { folder: "User_Avatars" }

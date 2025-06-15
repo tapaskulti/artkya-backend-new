@@ -51,23 +51,26 @@ const artDetailsSchema = new mongoose.Schema(
       currency: { type: String },
     },
     adminPrice: {
-      type: String,
+      type: String, //how much price admin will get by print art
+    },
+    commissionPercent: {
+      type: Number, //how much is the commision Percent
+    },
+    commissionAmount: {
+      type: Number, //how much is the commision amount
     },
     totalPrice: {
-      type: String,
+      type: Number, //commissionAmount + price
     },
-    discountedPrice: {
-      type: String,
-    },
-    
- // Sales & Commission Details
+
+    // Sales & Commission Details
     isOriginalSold: { type: Boolean, default: false },
     // Print copies tracking
     printCopies: [
       {
-        dimension: { type: String, required: true },
-        saleCount: { type: Number, default: 0 },
-        totalSales: { type: Number, default: 0 },
+        dimension: { type: String},
+        saleCount: { type: Number},
+        totalSales: { type: Number},
       },
     ],
 
@@ -79,7 +82,8 @@ const artDetailsSchema = new mongoose.Schema(
       type: Boolean,
     },
     isPublished: {
-      type: Boolean,
+      type: Boolean, //published true or nor
+      default: false,
     },
     isAdultContent: {
       type: Boolean,
