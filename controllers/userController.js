@@ -8,6 +8,8 @@ const sgMail = require("@sendgrid/mail");
 const crypto = require("crypto");
 const { compileTemplate } = require("../utils/emailHelperFunction");
 
+
+console.log('SendGrid API Key:', process.env.SENDGRID_API_KEY ? 'Set' : 'Missing');
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 //creating Refresh Token
@@ -358,10 +360,27 @@ exports.forgotPasswordmail = async (req, res, next) => {
       message: "email sent succesfully",
     });
   } catch (error) {
-    console.log(error);
-    // user.forgotPasswordToken = undefined;
-    // user.forgotPasswordExpiry = undefined;
-    // await user.save({ validateBeforeSave: false });
+    console.error("SendGrid Error:", error.response?.body || error.message);
+    
+    // Clean up tokens on error
+    try {
+      await User.findOneAndUpdate(
+        { email: req.body.email },
+        {
+          $unset: {
+            forgotPasswordToken: 1,
+            forgotPasswordExpiry: 1
+          }
+        }
+      );
+    } catch (cleanupError) {
+      console.error("Cleanup error:", cleanupError);
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to send reset email. Please try again later.",
+    });
   }
 };
 
