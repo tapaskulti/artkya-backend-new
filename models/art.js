@@ -70,7 +70,7 @@ const artDetailsSchema = new mongoose.Schema(
       {
         dimension: { type: String},
         saleCount: { type: Number},
-        totalSales: { type: Number},
+        totalSales: { type: Number},//amount
       },
     ],
 
@@ -102,8 +102,10 @@ const artDetailsSchema = new mongoose.Schema(
       ref: "user",
     },
     original: {
+      type: Boolean      
+    },
+    print: {
       type: Boolean,
-      default: true,
     },
   },
   { timestamps: true }

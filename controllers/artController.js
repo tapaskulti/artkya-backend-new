@@ -94,6 +94,7 @@ exports.createArt = async (req, res) => {
   try {
     const artistId = req.body.artist;
 
+    console.log("artistId=====>",artistId)
     const artistDetails = await artistDetailsModel.findOne({
       userId: artistId,
     });
