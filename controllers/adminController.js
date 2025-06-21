@@ -220,67 +220,7 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-// Get all artist details with search
-exports.getAllArtists = async (req, res) => {
-  try {
-    const { search = "" } = req.query;
 
-    const artists = await User.aggregate([
-      // Match only artists, optionally filter by name or email
-      {
-        $match: {
-          isArtist: true,
-          $or: [
-            { firstName: { $regex: search, $options: "i" } },
-            { lastName: { $regex: search, $options: "i" } },
-            { email: { $regex: search, $options: "i" } },
-          ],
-        },
-      },
-      {
-        $lookup: {
-          from: "artistdetails",
-          localField: "_id",
-          foreignField: "userId",
-          as: "artistDetails",
-        },
-      },
-      { $unwind: { path: "$artistDetails", preserveNullAndEmptyArrays: true } },
-      {
-        $lookup: {
-          from: "artdetails",
-          localField: "_id",
-          foreignField: "artist",
-          as: "soldArts",
-          pipeline: [{ $match: { isOriginalSold: true } }],
-        },
-      },
-      {
-        $project: {
-          name: { $concat: ["$firstName", " ", "$lastName"] },
-          email: 1,
-          userType: "ARTIST",
-          joiningDate: "$createdAt",
-          verified: "$isArtist",
-          status: {
-            $cond: {
-              if: "$isActive",
-              then: "Active",
-              else: "Inactive",
-            },
-          },
-          originalCommission: "$artistDetails.originalPercent",
-          totalArtSold: { $size: "$soldArts" },
-          totalRevenue: { $sum: "$soldArts.totalPrice" },
-        },
-      },
-    ]);
-
-    return res.status(200).json({ success: true, data: artists });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
-  }
-};
 // Get all Painting details with search
 exports.getAllPainting = async (req, res) => {
   try {
@@ -341,53 +281,1196 @@ exports.getAllPainting = async (req, res) => {
   }
 };
 
-
-// Activate/Deactivate User (Handles artist status)
-exports.toggleUserStatus = async (req, res) => {
+// Update Painting Status
+exports.updatePaintingStatus = async (req, res) => {
   try {
-    const { userId } = req.query;
-    const user = await User.findById(userId);
+    const { artId } = req.params;
+    const { status } = req.body;
 
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    user.isActive = !user.isActive;
-    if (user.role === "ARTIST") {
-      user.isArtist = user.isActive;
+    // Validate status
+    const validStatuses = ['Available', 'Sold', 'Hidden'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Must be one of: ' + validStatuses.join(', ')
+      });
     }
 
-    await user.save();
-    return res.status(200).json({
-      message: `User ${user.isActive ? "Activated" : "Deactivated"}`,
-      user,
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+    const artwork = await ArtDetails.findById(artId);
+    if (!artwork) {
+      return res.status(404).json({
+        success: false,
+        message: 'Artwork not found'
+      });
+    }
 
-// Update Print Commission Percentage
-exports.updateArtistCommission = async (req, res) => {
-  try {
-    let { userId, originalPercent } = req.body;
-    originalPercent = parseInt(originalPercent);
+    // Update status logic
+    let updateFields = { updatedAt: new Date() };
+    
+    if (status === 'Sold') {
+      updateFields.isOriginalSold = true;
+      updateFields.soldDate = new Date();
+    } else if (status === 'Available') {
+      updateFields.isOriginalSold = false;
+      updateFields.soldDate = null;
+    } else if (status === 'Hidden') {
+      updateFields.isPublished = false;
+    }
 
-    const artistDetails = await ArtistDetails.findOneAndUpdate(
-      { userId: userId },
-      { originalPercent: originalPercent },
+    const updatedArtwork = await ArtDetails.findByIdAndUpdate(
+      artId,
+      { $set: updateFields },
       { new: true }
     );
 
-    if (!artistDetails) {
-      return res.status(404).json({ message: "Artist not found" });
-    }
+    res.status(200).json({
+      success: true,
+      message: `Artwork status updated to ${status}`,
+      data: { artwork: updatedArtwork }
+    });
 
-    return res
-      .status(200)
-      .json({ message: "Commission updated", artistDetails });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    console.error('Error updating painting status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update painting status',
+      error: error.message
+    });
   }
 };
+
+// Delete Painting
+exports.deletePainting = async (req, res) => {
+  try {
+    const { artId } = req.params;
+
+    const artwork = await ArtDetails.findById(artId);
+    if (!artwork) {
+      return res.status(404).json({
+        success: false,
+        message: 'Artwork not found'
+      });
+    }
+
+    // Check if artwork is sold - prevent deletion of sold items
+    if (artwork.isOriginalSold) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete sold artwork'
+      });
+    }
+
+    // Soft delete - just mark as deleted
+    await ArtDetails.findByIdAndUpdate(artId, {
+      $set: {
+        isDeleted: true,
+        deletedAt: new Date(),
+        deletedBy: req.user.id
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Artwork deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Error deleting painting:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete painting',
+      error: error.message
+    });
+  }
+};
+
+// Export Paintings
+exports.exportPaintings = async (req, res) => {
+  try {
+    const { format = 'excel', status, category, approved, artist } = req.query;
+
+    // Build query
+    const query = { isDeleted: { $ne: true } };
+    
+    if (status) {
+      if (status === 'Sold') {
+        query.isOriginalSold = true;
+      } else if (status === 'Available') {
+        query.isOriginalSold = false;
+      } else if (status === 'Hidden') {
+        query.isPublished = false;
+      }
+    }
+    
+    if (category) query.category = category;
+    if (approved !== undefined) query.isPublished = approved === 'true';
+
+    const paintings = await ArtDetails.aggregate([
+      { $match: query },
+      {
+        $lookup: {
+          from: "users",
+          localField: "artist",
+          foreignField: "_id",
+          as: "artistInfo",
+        },
+      },
+      {
+        $unwind: {
+          path: "$artistInfo",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $match: artist ? {
+          $or: [
+            { "artistInfo.firstName": { $regex: artist, $options: 'i' } },
+            { "artistInfo.lastName": { $regex: artist, $options: 'i' } }
+          ]
+        } : {}
+      },
+      {
+        $project: {
+          title: 1,
+          artist: {
+            $concat: [
+              { $ifNull: ["$artistInfo.firstName", ""] },
+              " ",
+              { $ifNull: ["$artistInfo.lastName", ""] }
+            ]
+          },
+          category: 1,
+          price: "$priceDetails.price",
+          commission: "$commissionAmount",
+          totalPrice: { $add: ["$priceDetails.price", { $ifNull: ["$commissionAmount", 0] }] },
+          status: {
+            $cond: {
+              if: { $eq: ["$isOriginalSold", true] },
+              then: "Sold",
+              else: { $cond: { if: { $eq: ["$isPublished", false] }, then: "Hidden", else: "Available" } }
+            }
+          },
+          approved: "$isPublished",
+          uploadDate: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$createdAt",
+            },
+          },
+          medium: { $arrayElemAt: ["$medium", 0] },
+          style: { $arrayElemAt: ["$styles", 0] },
+          dimensions: {
+            $concat: [
+              { $toString: { $ifNull: ["$dimensions.height", ""] } },
+              " x ",
+              { $toString: { $ifNull: ["$dimensions.width", ""] } },
+              " ",
+              { $ifNull: ["$dimensions.unit", ""] }
+            ]
+          }
+        }
+      }
+    ]);
+
+    if (format === 'excel') {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Paintings Report');
+
+      // Add headers
+      worksheet.columns = [
+        { header: 'Title', key: 'title', width: 25 },
+        { header: 'Artist', key: 'artist', width: 20 },
+        { header: 'Category', key: 'category', width: 15 },
+        { header: 'Price', key: 'price', width: 12 },
+        { header: 'Commission', key: 'commission', width: 12 },
+        { header: 'Total Price', key: 'totalPrice', width: 12 },
+        { header: 'Status', key: 'status', width: 12 },
+        { header: 'Approved', key: 'approved', width: 10 },
+        { header: 'Upload Date', key: 'uploadDate', width: 15 },
+        { header: 'Medium', key: 'medium', width: 15 },
+        { header: 'Style', key: 'style', width: 15 },
+        { header: 'Dimensions', key: 'dimensions', width: 15 }
+      ];
+
+      // Add data
+      paintings.forEach(painting => {
+        worksheet.addRow({
+          title: painting.title,
+          artist: painting.artist.trim(),
+          category: painting.category,
+          price: painting.price || 0,
+          commission: painting.commission || 0,
+          totalPrice: painting.totalPrice || 0,
+          status: painting.status,
+          approved: painting.approved ? 'Yes' : 'No',
+          uploadDate: painting.uploadDate,
+          medium: painting.medium || '',
+          style: painting.style || '',
+          dimensions: painting.dimensions
+        });
+      });
+
+      // Style headers
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
+
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="paintings-export-${new Date().toISOString().split('T')[0]}.xlsx"`);
+      
+      await workbook.xlsx.write(res);
+      res.end();
+
+    } else {
+      // CSV format
+      const csvData = paintings.map(painting => ({
+        'Title': painting.title,
+        'Artist': painting.artist.trim(),
+        'Category': painting.category,
+        'Price': painting.price || 0,
+        'Commission': painting.commission || 0,
+        'Total Price': painting.totalPrice || 0,
+        'Status': painting.status,
+        'Approved': painting.approved ? 'Yes' : 'No',
+        'Upload Date': painting.uploadDate,
+        'Medium': painting.medium || '',
+        'Style': painting.style || '',
+        'Dimensions': painting.dimensions
+      }));
+
+      const csvContent = [
+        Object.keys(csvData[0]).join(','),
+        ...csvData.map(row => Object.values(row).map(val => `"${val}"`).join(','))
+      ].join('\n');
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="paintings-export-${new Date().toISOString().split('T')[0]}.csv"`);
+      res.send(csvContent);
+    }
+
+  } catch (error) {
+    console.error('Export paintings error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to export paintings',
+      error: error.message
+    });
+  }
+};
+
+// Get Painting Analytics
+exports.getPaintingAnalytics = async (req, res) => {
+  try {
+    const { period = '30d' } = req.query;
+    
+    const today = new Date();
+    let startDate;
+    
+    switch (period) {
+      case '7d':
+        startDate = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startDate = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90d':
+        startDate = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      case '1y':
+        startDate = new Date(today.getTime() - 365 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+
+    const [
+      totalPaintings,
+      approvedPaintings,
+      soldPaintings,
+      recentUploads,
+      categoryBreakdown,
+      artistStats,
+      revenueData
+    ] = await Promise.all([
+      // Total paintings
+      ArtDetails.countDocuments({ isDeleted: { $ne: true } }),
+      
+      // Approved paintings
+      ArtDetails.countDocuments({ isPublished: true, isDeleted: { $ne: true } }),
+      
+      // Sold paintings
+      ArtDetails.countDocuments({ isOriginalSold: true, isDeleted: { $ne: true } }),
+      
+      // Recent uploads
+      ArtDetails.countDocuments({ 
+        createdAt: { $gte: startDate },
+        isDeleted: { $ne: true }
+      }),
+      
+      // Category breakdown
+      ArtDetails.aggregate([
+        { $match: { isDeleted: { $ne: true } } },
+        { $group: { _id: '$category', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]),
+      
+      // Top artists by artwork count
+      ArtDetails.aggregate([
+        { $match: { isDeleted: { $ne: true } } },
+        { $group: { _id: '$artist', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 10 },
+        {
+          $lookup: {
+            from: 'users',
+            localField: '_id',
+            foreignField: '_id',
+            as: 'artistInfo'
+          }
+        },
+        { $unwind: '$artistInfo' },
+        {
+          $project: {
+            name: {
+              $concat: ['$artistInfo.firstName', ' ', '$artistInfo.lastName']
+            },
+            count: 1
+          }
+        }
+      ]),
+      
+      // Revenue data
+      ArtDetails.aggregate([
+        { 
+          $match: { 
+            isOriginalSold: true, 
+            isDeleted: { $ne: true },
+            soldDate: { $gte: startDate }
+          } 
+        },
+        { 
+          $group: { 
+            _id: null, 
+            totalRevenue: { 
+              $sum: { 
+                $add: ['$priceDetails.price', { $ifNull: ['$commissionAmount', 0] }] 
+              } 
+            },
+            avgPrice: { $avg: '$priceDetails.price' }
+          } 
+        }
+      ])
+    ]);
+
+    const analytics = {
+      overview: {
+        totalPaintings,
+        approvedPaintings,
+        soldPaintings,
+        recentUploads,
+        approvalRate: totalPaintings > 0 ? ((approvedPaintings / totalPaintings) * 100).toFixed(1) : 0,
+        salesRate: approvedPaintings > 0 ? ((soldPaintings / approvedPaintings) * 100).toFixed(1) : 0
+      },
+      categoryBreakdown: categoryBreakdown.reduce((acc, cat) => {
+        acc[cat._id] = cat.count;
+        return acc;
+      }, {}),
+      topArtists: artistStats,
+      revenue: {
+        total: revenueData[0]?.totalRevenue || 0,
+        average: revenueData[0]?.avgPrice || 0
+      }
+    };
+
+    res.status(200).json({
+      success: true,
+      data: { analytics }
+    });
+
+  } catch (error) {
+    console.error('Get painting analytics error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get painting analytics',
+      error: error.message
+    });
+  }
+};
+
+// Bulk Approve Paintings
+exports.bulkApprovePaintings = async (req, res) => {
+  try {
+    const { artIds } = req.body;
+    
+    if (!artIds || !Array.isArray(artIds) || artIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Art IDs array is required'
+      });
+    }
+
+    const result = await ArtDetails.updateMany(
+      { 
+        _id: { $in: artIds },
+        isDeleted: { $ne: true }
+      },
+      { 
+        $set: { 
+          isPublished: true, 
+          approvedAt: new Date(),
+          approvedBy: req.user.id
+        } 
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `${result.modifiedCount} paintings approved successfully`,
+      data: {
+        matchedCount: result.matchedCount,
+        modifiedCount: result.modifiedCount
+      }
+    });
+
+  } catch (error) {
+    console.error('Bulk approve paintings error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to bulk approve paintings',
+      error: error.message
+    });
+  }
+};
+
+// Get Painting Details
+exports.getPaintingDetails = async (req, res) => {
+  try {
+    const { artId } = req.params;
+
+    const painting = await ArtDetails.findById(artId)
+      .populate('artist', 'firstName lastName email avatar')
+      .lean();
+
+    if (!painting) {
+      return res.status(404).json({
+        success: false,
+        message: 'Painting not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: { painting }
+    });
+
+  } catch (error) {
+    console.error('Get painting details error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get painting details',
+      error: error.message
+    });
+  }
+};
+
+exports.getAllArtists = async (req, res) => {
+  try {
+    const {
+      search,
+      status,
+      verified,
+      artApprovalReq,
+      page = 1,
+      limit = 10,
+      commissionRange,
+      artworksRange
+    } = req.query;
+
+    // Build filter query - using your schema fields
+    let filter = { isArtist: true };
+
+    // Search filter - using firstName, lastName, email
+    if (search) {
+      filter.$or = [
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Status filter - using isActive field
+    if (status) {
+      if (status === 'Active') {
+        filter.isActive = true;
+      } else if (status === 'Inactive') {
+        filter.isActive = false;
+      }
+      // Note: Your schema doesn't have 'Suspended', you might need to add this field
+    }
+
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Fetch artists with aggregation to include artwork counts
+    const artists = await User.aggregate([
+      { $match: filter },
+      // Join with artistDetails collection
+      {
+        $lookup: {
+          from: 'artistdetails',
+          localField: '_id',
+          foreignField: 'userId',
+          as: 'artistDetails'
+        }
+      },
+      { $unwind: { path: '$artistDetails', preserveNullAndEmptyArrays: true } },
+      // Join with artDetails collection to get artworks
+      {
+        $lookup: {
+          from: 'artdetails',
+          localField: '_id',
+          foreignField: 'artist',
+          as: 'artworks'
+        }
+      },
+      // Filter artworks based on additional filters if needed
+      {
+        $addFields: {
+          // Create name field by combining firstName and lastName
+          name: { $concat: ['$firstName', ' ', '$lastName'] },
+          // Map your schema fields to expected frontend fields
+          verified: '$artistDetails.isVerified',
+          isArtApprovalReq: '$artistDetails.isArtApprovalReq',
+          originalCommission: '$artistDetails.originalPercent',
+          status: {
+            $cond: {
+              if: '$isActive',
+              then: 'Active',
+              else: 'Inactive'
+            }
+          },
+          profileImage: '$artistDetails.profileImage.secure_url',
+          // Calculate artwork statistics
+          totalArtworks: { $size: '$artworks' },
+          approvedArtworks: {
+            $size: {
+              $filter: {
+                input: '$artworks',
+                cond: { $eq: ['$$this.isPublished', true] }
+              }
+            }
+          },
+          totalArtSold: {
+            $size: {
+              $filter: {
+                input: '$artworks',
+                cond: { $eq: ['$$this.isOriginalSold', true] }
+              }
+            }
+          },
+          totalRevenue: {
+            $sum: {
+              $map: {
+                input: {
+                  $filter: {
+                    input: '$artworks',
+                    cond: { $eq: ['$$this.isOriginalSold', true] }
+                  }
+                },
+                in: '$$this.totalPrice'
+              }
+            }
+          }
+        }
+      },
+      // Apply additional filters after aggregation
+      {
+        $match: {
+          ...(verified !== undefined && verified !== '' && {
+            verified: verified === 'true'
+          }),
+          ...(artApprovalReq !== undefined && artApprovalReq !== '' && {
+            isArtApprovalReq: artApprovalReq === 'true'
+          }),
+          ...(commissionRange && (() => {
+            const [min, max] = commissionRange.split('-').map(Number);
+            return { originalCommission: { $gte: min, $lte: max } };
+          })()),
+          ...(artworksRange && (() => {
+            const [min, max] = artworksRange.split('-').map(Number);
+            return { totalArtworks: { $gte: min, $lte: max } };
+          })())
+        }
+      },
+      {
+        $project: {
+          password: 0,
+          artworks: 0,
+          refresh_token: 0,
+          forgotPasswordToken: 0,
+          forgotPasswordExpiry: 0
+        }
+      },
+      { $skip: skip },
+      { $limit: parseInt(limit) },
+      { $sort: { createdAt: -1 } }
+    ]);
+
+    // Get total count for pagination
+    const totalCountPipeline = await User.aggregate([
+      { $match: filter },
+      {
+        $lookup: {
+          from: 'artistdetails',
+          localField: '_id',
+          foreignField: 'userId',
+          as: 'artistDetails'
+        }
+      },
+      { $unwind: { path: '$artistDetails', preserveNullAndEmptyArrays: true } },
+      {
+        $match: {
+          ...(verified !== undefined && verified !== '' && {
+            'artistDetails.isVerified': verified === 'true'
+          }),
+          ...(artApprovalReq !== undefined && artApprovalReq !== '' && {
+            'artistDetails.isArtApprovalReq': artApprovalReq === 'true'
+          })
+        }
+      },
+      { $count: 'total' }
+    ]);
+
+    const totalCount = totalCountPipeline[0]?.total || 0;
+
+    // Calculate analytics
+    const analytics = await User.aggregate([
+      { $match: { isArtist: true } },
+      {
+        $lookup: {
+          from: 'artistdetails',
+          localField: '_id',
+          foreignField: 'userId',
+          as: 'artistDetails'
+        }
+      },
+      { $unwind: { path: '$artistDetails', preserveNullAndEmptyArrays: true } },
+      {
+        $group: {
+          _id: null,
+          totalArtists: { $sum: 1 },
+          activeArtists: {
+            $sum: { $cond: ['$isActive', 1, 0] }
+          },
+          verifiedArtists: {
+            $sum: { $cond: ['$artistDetails.isVerified', 1, 0] }
+          },
+          averageCommission: { $avg: '$artistDetails.originalPercent' }
+        }
+      }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      artists,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalCount / parseInt(limit)),
+        totalCount,
+        hasNext: skip + parseInt(limit) < totalCount,
+        hasPrev: parseInt(page) > 1
+      },
+      analytics: analytics[0] || {
+        totalArtists: 0,
+        activeArtists: 0,
+        verifiedArtists: 0,
+        averageCommission: 0
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching artists:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch artists',
+      error: error.message
+    });
+  }
+};
+
+// Get artist details
+exports.getArtistDetails = async (req, res) => {
+  try {
+    const { artistId } = req.params;
+
+    const artist = await User.findById(artistId).select('-password -refresh_token -forgotPasswordToken');
+    if (!artist || !artist.isArtist) {
+      return res.status(404).json({
+        success: false,
+        message: 'Artist not found'
+      });
+    }
+
+    // Get artist details
+    const artistDetails = await ArtistDetails.findOne({ userId: artistId });
+
+    // Get artist's artworks
+    const artworks = await ArtDetails.find({ artist: artistId });
+    
+    // Calculate additional stats
+    const stats = {
+      totalArtworks: artworks.length,
+      approvedArtworks: artworks.filter(art => art.isPublished).length,
+      pendingArtworks: artworks.filter(art => !art.isPublished && !art.isDeleted).length,
+      featuredArtworks: artworks.filter(art => art.isFeatured).length,
+      soldOriginals: artworks.filter(art => art.isOriginalSold).length,
+      totalRevenue: artworks
+        .filter(art => art.isOriginalSold)
+        .reduce((sum, art) => sum + (art.totalPrice || 0), 0),
+      printSales: artworks.reduce((sum, art) => {
+        return sum + (art.printCopies?.reduce((printSum, copy) => printSum + (copy.totalSales || 0), 0) || 0);
+      }, 0)
+    };
+
+    res.status(200).json({
+      success: true,
+      artist: {
+        ...artist.toObject(),
+        name: `${artist.firstName} ${artist.lastName}`,
+        artistDetails
+      },
+      stats,
+      recentArtworks: artworks.slice(0, 5)
+    });
+  } catch (error) {
+    console.error('Error fetching artist details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch artist details',
+      error: error.message
+    });
+  }
+};
+
+// Verify artist
+exports.verifyArtist = async (req, res) => {
+  try {
+    const { artistId } = req.params;
+
+    const artist = await User.findById(artistId);
+    if (!artist || !artist.isArtist) {
+      return res.status(404).json({
+        success: false,
+        message: 'Artist not found'
+      });
+    }
+
+    // Update verification in artistDetails collection
+    const artistDetails = await ArtistDetails.findOne({ userId: artistId });
+    if (artistDetails) {
+      artistDetails.isVerified = !artistDetails.isVerified;
+      await artistDetails.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Artist ${artistDetails?.isVerified ? 'verified' : 'unverified'} successfully`,
+      verified: artistDetails?.isVerified || false
+    });
+  } catch (error) {
+    console.error('Error verifying artist:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to verify artist',
+      error: error.message
+    });
+  }
+};
+
+// Update artist status
+exports.updateArtistStatus = async (req, res) => {
+  try {
+    const { artistId } = req.params;
+    const { status } = req.body;
+
+    const artist = await User.findById(artistId);
+    if (!artist || !artist.isArtist) {
+      return res.status(404).json({
+        success: false,
+        message: 'Artist not found'
+      });
+    }
+
+    // Update isActive based on status
+    if (status === 'Active') {
+      artist.isActive = true;
+    } else if (status === 'Inactive') {
+      artist.isActive = false;
+    }
+    // Note: You might want to add a 'suspended' field to your schema for 'Suspended' status
+
+    await artist.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Artist status updated successfully',
+      status: artist.isActive ? 'Active' : 'Inactive'
+    });
+  } catch (error) {
+    console.error('Error updating artist status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update artist status',
+      error: error.message
+    });
+  }
+};
+
+// Toggle art approval permission
+exports.toggleArtApprovalPermission = async (req, res) => {
+  try {
+    const { artistId } = req.params;
+    const { isArtApprovalReq } = req.body;
+
+    const artistDetails = await ArtistDetails.findOne({ userId: artistId });
+    if (!artistDetails) {
+      return res.status(404).json({
+        success: false,
+        message: 'Artist details not found'
+      });
+    }
+
+    artistDetails.isArtApprovalReq = isArtApprovalReq;
+    await artistDetails.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Art approval permission updated successfully',
+      isArtApprovalReq: artistDetails.isArtApprovalReq
+    });
+  } catch (error) {
+    console.error('Error updating art approval permission:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update art approval permission',
+      error: error.message
+    });
+  }
+};
+
+// Update artist commission
+exports.updateArtistCommission = async (req, res) => {
+  try {
+    const { artistId } = req.params;
+    const { originalPercent } = req.body;
+
+    if (originalPercent < 0 || originalPercent > 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'Commission percentage must be between 0 and 100'
+      });
+    }
+
+    const artistDetails = await ArtistDetails.findOne({ userId: artistId });
+    if (!artistDetails) {
+      return res.status(404).json({
+        success: false,
+        message: 'Artist details not found'
+      });
+    }
+
+    artistDetails.originalPercent = originalPercent;
+    await artistDetails.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Artist commission updated successfully',
+      originalPercent: artistDetails.originalPercent
+    });
+  } catch (error) {
+    console.error('Error updating artist commission:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update artist commission',
+      error: error.message
+    });
+  }
+};
+
+// Get artist analytics
+exports.getArtistAnalytics = async (req, res) => {
+  try {
+    const analytics = await User.aggregate([
+      { $match: { isArtist: true } },
+      {
+        $lookup: {
+          from: 'artistdetails',
+          localField: '_id',
+          foreignField: 'userId',
+          as: 'artistDetails'
+        }
+      },
+      { $unwind: { path: '$artistDetails', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'artdetails',
+          localField: '_id',
+          foreignField: 'artist',
+          as: 'artworks'
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalArtists: { $sum: 1 },
+          activeArtists: {
+            $sum: { $cond: ['$isActive', 1, 0] }
+          },
+          verifiedArtists: {
+            $sum: { $cond: ['$artistDetails.isVerified', 1, 0] }
+          },
+          totalArtworks: { $sum: { $size: '$artworks' } },
+          totalRevenue: {
+            $sum: {
+              $sum: {
+                $map: {
+                  input: {
+                    $filter: {
+                      input: '$artworks',
+                      cond: { $eq: ['$$this.isOriginalSold', true] }
+                    }
+                  },
+                  in: '$$this.totalPrice'
+                }
+              }
+            }
+          },
+          averageCommission: { $avg: '$artistDetails.originalPercent' }
+        }
+      }
+    ]);
+
+    const monthlyStats = await User.aggregate([
+      { $match: { isArtist: true } },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' }
+          },
+          newArtists: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id.year': -1, '_id.month': -1 } },
+      { $limit: 12 }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      analytics: analytics[0] || {
+        totalArtists: 0,
+        activeArtists: 0,
+        verifiedArtists: 0,
+        totalArtworks: 0,
+        totalRevenue: 0,
+        averageCommission: 0
+      },
+      monthlyStats
+    });
+  } catch (error) {
+    console.error('Error fetching artist analytics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch artist analytics',
+      error: error.message
+    });
+  }
+};
+
+// Export artists to Excel
+exports.exportArtists = async (req, res) => {
+  try {
+    const { format = 'excel', filters = {} } = req.query;
+
+    // Build filter query
+    let filter = { isArtist: true };
+    
+    if (filters.status) {
+      if (filters.status === 'Active') {
+        filter.isActive = true;
+      } else if (filters.status === 'Inactive') {
+        filter.isActive = false;
+      }
+    }
+
+    // Fetch artists with artwork data
+    const artists = await User.aggregate([
+      { $match: filter },
+      {
+        $lookup: {
+          from: 'artistdetails',
+          localField: '_id',
+          foreignField: 'userId',
+          as: 'artistDetails'
+        }
+      },
+      { $unwind: { path: '$artistDetails', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'artdetails',
+          localField: '_id',
+          foreignField: 'artist',
+          as: 'artworks'
+        }
+      },
+      {
+        $addFields: {
+          name: { $concat: ['$firstName', ' ', '$lastName'] },
+          verified: '$artistDetails.isVerified',
+          isArtApprovalReq: '$artistDetails.isArtApprovalReq',
+          originalCommission: '$artistDetails.originalPercent',
+          status: {
+            $cond: {
+              if: '$isActive',
+              then: 'Active',
+              else: 'Inactive'
+            }
+          },
+          totalArtworks: { $size: '$artworks' },
+          approvedArtworks: {
+            $size: {
+              $filter: {
+                input: '$artworks',
+                cond: { $eq: ['$$this.isPublished', true] }
+              }
+            }
+          },
+          totalArtSold: {
+            $size: {
+              $filter: {
+                input: '$artworks',
+                cond: { $eq: ['$$this.isOriginalSold', true] }
+              }
+            }
+          },
+          totalRevenue: {
+            $sum: {
+              $map: {
+                input: {
+                  $filter: {
+                    input: '$artworks',
+                    cond: { $eq: ['$$this.isOriginalSold', true] }
+                  }
+                },
+                in: '$$this.totalPrice'
+              }
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          name: 1,
+          email: 1,
+          status: 1,
+          verified: 1,
+          isArtApprovalReq: 1,
+          originalCommission: 1,
+          totalArtworks: 1,
+          approvedArtworks: 1,
+          totalArtSold: 1,
+          totalRevenue: 1,
+          createdAt: 1,
+          country: '$artistDetails.country',
+          city: '$artistDetails.city'
+        }
+      },
+      { $sort: { createdAt: -1 } }
+    ]);
+
+    if (format === 'excel') {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Artists');
+
+      // Define columns
+      worksheet.columns = [
+        { header: 'Name', key: 'name', width: 20 },
+        { header: 'Email', key: 'email', width: 25 },
+        { header: 'Country', key: 'country', width: 15 },
+        { header: 'City', key: 'city', width: 15 },
+        { header: 'Status', key: 'status', width: 12 },
+        { header: 'Verified', key: 'verified', width: 10 },
+        { header: 'Art Approval Required', key: 'isArtApprovalReq', width: 20 },
+        { header: 'Commission %', key: 'originalCommission', width: 15 },
+        { header: 'Total Artworks', key: 'totalArtworks', width: 15 },
+        { header: 'Approved Artworks', key: 'approvedArtworks', width: 18 },
+        { header: 'Total Art Sold', key: 'totalArtSold', width: 15 },
+        { header: 'Total Revenue', key: 'totalRevenue', width: 15 },
+        { header: 'Joined Date', key: 'createdAt', width: 15 }
+      ];
+
+      // Style the header row
+      worksheet.getRow(1).eachCell((cell) => {
+        cell.font = { bold: true };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFE0E0E0' }
+        };
+      });
+
+      // Add data rows
+      artists.forEach((artist) => {
+        worksheet.addRow({
+          name: artist.name || '',
+          email: artist.email || '',
+          country: artist.country || '',
+          city: artist.city || '',
+          status: artist.status || 'Active',
+          verified: artist.verified ? 'Yes' : 'No',
+          isArtApprovalReq: artist.isArtApprovalReq ? 'Yes' : 'No',
+          originalCommission: artist.originalCommission || 20,
+          totalArtworks: artist.totalArtworks || 0,
+          approvedArtworks: artist.approvedArtworks || 0,
+          totalArtSold: artist.totalArtSold || 0,
+          totalRevenue: artist.totalRevenue || 0,
+          createdAt: artist.createdAt ? new Date(artist.createdAt).toLocaleDateString() : ''
+        });
+      });
+
+      // Set response headers
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      );
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename=artists_export_${new Date().toISOString().split('T')[0]}.xlsx`
+      );
+
+      // Write to response
+      await workbook.xlsx.write(res);
+      res.end();
+    } else {
+      // Return JSON format
+      res.status(200).json({
+        success: true,
+        data: artists,
+        count: artists.length
+      });
+    }
+  } catch (error) {
+    console.error('Error exporting artists:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to export artists',
+      error: error.message
+    });
+  }
+};
+
 
 // Directly verify an artist (Admin privilege)
 exports.verifyArtist = async (req, res) => {

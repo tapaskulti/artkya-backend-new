@@ -68,9 +68,9 @@ const artDetailsSchema = new mongoose.Schema(
     // Print copies tracking
     printCopies: [
       {
-        dimension: { type: String},
-        saleCount: { type: Number},
-        totalSales: { type: Number},//amount
+        dimension: { type: String },
+        saleCount: { type: Number },
+        totalSales: { type: Number }, //amount
       },
     ],
 
@@ -101,8 +101,17 @@ const artDetailsSchema = new mongoose.Schema(
       type: ObjectId,
       ref: "user",
     },
+    isDeleted: {
+      type: Boolean,
+    },
+    deletedAt: {
+      type: Date,
+    },
+    deletedBy: {
+      type: ObjectId,
+    },
     original: {
-      type: Boolean      
+      type: Boolean,
     },
     print: {
       type: Boolean,
