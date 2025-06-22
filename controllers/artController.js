@@ -563,7 +563,7 @@ exports.newFilterArt = async (req, res) => {
       featuredartist,
     } = req.body;
 
-    let query = {};
+    let query = {isPublished: true};
     let searchquery = {};
 
     console.log("body==========>", req.body);
