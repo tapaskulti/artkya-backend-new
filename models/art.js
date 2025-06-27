@@ -59,11 +59,8 @@ const artDetailsSchema = new mongoose.Schema(
     commissionAmount: {
       type: Number, //how much is the commision amount
     },
-    commissionAmount: {
-      type: Number,
-    },
     totalPrice: {
-      type: Number,
+      type: Number, //commissionAmount + price
     },
 
     // Sales & Commission Details
@@ -71,9 +68,9 @@ const artDetailsSchema = new mongoose.Schema(
     // Print copies tracking
     printCopies: [
       {
-        dimension: { type: String},
-        saleCount: { type: Number},
-        totalSales: { type: Number},
+        dimension: { type: String },
+        saleCount: { type: Number },
+        totalSales: { type: Number }, //amount
       },
     ],
 
@@ -104,9 +101,20 @@ const artDetailsSchema = new mongoose.Schema(
       type: ObjectId,
       ref: "user",
     },
+    isDeleted: {
+      type: Boolean,
+    },
+    deletedAt: {
+      type: Date,
+    },
+    deletedBy: {
+      type: ObjectId,
+    },
     original: {
       type: Boolean,
-      default: true,
+    },
+    print: {
+      type: Boolean,
     },
   },
   { timestamps: true }

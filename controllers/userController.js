@@ -3,6 +3,15 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/user");
 const cloudinary = require("cloudinary");
 const ArtistDetails = require("../models/artistDetails");
+const { text } = require("body-parser");
+const sgMail = require("@sendgrid/mail");
+const crypto = require("crypto");
+const { compileTemplate } = require("../utils/emailHelperFunction");
+
+
+console.log('SendGrid API Key:', process.env.SENDGRID_API_KEY ? 'Set' : 'Missing');
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
 //creating Refresh Token
 const createRefreshToken = (payload) => {
   return jwt.sign(payload, process.env.JWT_SECRET_REFRESH_TOKEN, {
@@ -132,7 +141,7 @@ exports.login = async (req, res) => {
       });
     } else {
       refresh_Token = createRefreshToken({ id: user._id, userRole: user.role });
-      console.log("refresh_Token========>",refresh_Token);
+      console.log("refresh_Token========>", refresh_Token);
 
       await User.findOneAndUpdate(
         { email },
@@ -281,8 +290,153 @@ exports.updateUserAddress = async (req, res) => {
 };
 
 // Forget Password
+exports.forgotPasswordmail = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res
+        .status(400)
+        .send({ success: false, message: "Please enter your email" });
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.send({
+        success: false,
+        message: "User doesn't exist",
+      });
+    }
+
+    const forgotToken = crypto.randomBytes(20).toString("hex");
+    const forgotPasswordExpiry = Date.now() + 20 * 60 * 1000;
+    await User.findOneAndUpdate(
+      {
+        email,
+      },
+      {
+        forgotPasswordToken: forgotToken,
+        forgotPasswordExpiry: forgotPasswordExpiry,
+      }
+    );
+
+    await user.save({ validateBeforeSave: false });
+
+    let url;
+    if (process.env.NODE_ENV === "production") {
+      url = `https://artkya.com/password/reset/${forgotToken}`;
+    } else {
+      url = `http://localhost:5173/password/reset/${forgotToken}`;
+    }
+
+    const messageBody = compileTemplate("forgotPassword", {
+      user: {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: email,
+      },
+      resetPasswordUrl: url,
+      expiryTime: forgotPasswordExpiry,
+      currentYear: new Date().getFullYear(),
+      supportEmail: process.env.SUPPORT_EMAIL || "artkya23@gmail.com",
+      websiteUrl: process.env.FRONTEND_URL || "https://artkya.com",
+    });
+
+    const message = `Hello ${user.firstName},\n\nWe received a request to reset your password for your Artkya account.\n\nTo reset your password, click this link: ${url}\n\nThis link will expire in ${forgotPasswordExpiry} minutes.\n\nIf you didn't request this, please ignore this email.`;
+
+    const msg = {
+      to: email,
+      from: "artkya23@gmail.com",
+      subject: "Reset Your Password - Artkya",
+      text: message,
+      html: messageBody,
+    };
+
+    await sgMail.send(msg);
+    console.log("Forgot password email sent successfully to:", user.email);
+    return res.status(200).json({
+      success: true,
+      message: "email sent succesfully",
+    });
+  } catch (error) {
+    console.error("SendGrid Error:", error.response?.body || error.message);
+    
+    // Clean up tokens on error
+    try {
+      await User.findOneAndUpdate(
+        { email: req.body.email },
+        {
+          $unset: {
+            forgotPasswordToken: 1,
+            forgotPasswordExpiry: 1
+          }
+        }
+      );
+    } catch (cleanupError) {
+      console.error("Cleanup error:", cleanupError);
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to send reset email. Please try again later.",
+    });
+  }
+};
 
 // Reset Password
+
+exports.resetPassword = async (req, res) => {
+  const { password } = req.body;
+
+  if (!req.query.token) {
+    return res
+      .status(400)
+      .send({ success: false, message: "Please enter your token" });
+  }
+
+  if (!password) {
+    return res
+      .status(400)
+      .send({ success: false, message: "Please enter your password" });
+  }
+
+  try {
+    const user = await User.findOne({
+      forgotPasswordToken: req.query.token,
+      forgotPasswordExpiry: {
+        $gt: Date.now(),
+      },
+    });
+
+    if (!user) {
+      return res.send({
+        success: false,
+        message: "Token is invalid or expired",
+      });
+    }
+
+    const hashPassword = await bcrypt.hash(password, 10);
+    //update password in database
+    console.log(req.user);
+    const updateUserDetails = await User.findOneAndUpdate(
+      { _id: user._id },
+      {
+        password: hashPassword,
+        forgotPasswordExpiry: undefined,
+        forgotPasswordToken: undefined,
+      }
+    );
+
+    res.status(200).send({
+      success: true,
+      message: "password updated successfully",
+      data: updateUserDetails,
+    });
+  } catch (error) {
+    return res.status(500).send({ success: false, message: error.message });
+  }
+};
 
 exports.uploadUserAvatar = async (req, res) => {
   try {

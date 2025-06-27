@@ -8,9 +8,6 @@ const artistDetailsModel = require("../models/artistDetails");
 
 const { paymentsApi } = new Client({
   // accessToken: process.env.SQUARE_ACCESS_TOKEN,
-  accessToken: process.env.SQUARE_ACCESS_TOKEN,
-  // "EAAAFIZzaMiA-vXlNC4ayqONtIY1_xC7pMZY-G57ZS0LjZPb5l6fgOZ6obiER2pz",
-  // environment: "sandbox",
 });
 
 // exports.createArt = async (req, res) => {
@@ -97,6 +94,7 @@ exports.createArt = async (req, res) => {
   try {
     const artistId = req.body.artist;
 
+    console.log("artistId=====>",artistId)
     const artistDetails = await artistDetailsModel.findOne({
       userId: artistId,
     });
@@ -565,7 +563,7 @@ exports.newFilterArt = async (req, res) => {
       featuredartist,
     } = req.body;
 
-    let query = {};
+    let query = {isPublished: true};
     let searchquery = {};
 
     console.log("body==========>", req.body);
