@@ -1540,7 +1540,7 @@ exports.approveArtwork = async (req, res) => {
     });
 
     // If artist has 3+ approved artworks, disable future approvals
-    if (approvedArtworks >= 20 || artistDetails.isVerified) {
+    if (approvedArtworks >= 3 || artistDetails.isVerified) {
       artistDetails.isArtApprovalReq = false;
       await artistDetails.save();
 
