@@ -6,12 +6,10 @@ const ArtistDetails = require("../models/artistDetails");
 const { text } = require("body-parser");
 const sgMail = require("@sendgrid/mail");
 const crypto = require("crypto");
-const { compileTemplate, sendEmail } = require("../utils/emailHelperFunction");
+const { compileTemplate } = require("../utils/emailHelperFunction");
 
-console.log(
-  "SendGrid API Key:",
-  process.env.SENDGRID_API_KEY ? "Set" : "Missing"
-);
+
+console.log('SendGrid API Key:', process.env.SENDGRID_API_KEY ? 'Set' : 'Missing');
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 //creating Refresh Token
@@ -332,6 +330,8 @@ exports.forgotPasswordmail = async (req, res, next) => {
       url = `http://localhost:5173/password/reset/${forgotToken}`;
     }
 
+    const message = `Hello ${user.firstName},\n\nWe received a request to reset your password for your Artkya account.\n\nTo reset your password, click this link: ${url}\n\nThis link will expire in ${forgotPasswordExpiry} minutes.\n\nIf you didn't request this, please ignore this email.`;
+
     // const messageBody = compileTemplate("forgotPassword", {
     //   user: {
     //     firstName: user.firstName,
@@ -345,8 +345,6 @@ exports.forgotPasswordmail = async (req, res, next) => {
     //   websiteUrl: process.env.FRONTEND_URL || "https://artkya.com",
     // });
 
-    const message = `Hello ${user.firstName},\n\nWe received a request to reset your password for your Artkya account.\n\nTo reset your password, click this link: ${url}\n\nThis link will expire in ${forgotPasswordExpiry} minutes.\n\nIf you didn't request this, please ignore this email.`;
-
     // const msg = {
     //   to: email,
     //   from: "artkya23@gmail.com",
@@ -355,7 +353,9 @@ exports.forgotPasswordmail = async (req, res, next) => {
     //   html: messageBody,
     // };
 
-    const sendEmailData = {
+    // await sgMail.send(msg);
+    
+     const sendEmailData = {
       to:email,
       from: "artkya23@gmail.com",
       subject: "Reset Your Password - Artkya",
@@ -376,6 +376,8 @@ exports.forgotPasswordmail = async (req, res, next) => {
     };
 
     await sendEmail(sendEmailData);
+
+    
     console.log("Forgot password email sent successfully to:", user.email);
     return res.status(200).json({
       success: true,
@@ -383,7 +385,7 @@ exports.forgotPasswordmail = async (req, res, next) => {
     });
   } catch (error) {
     console.error("SendGrid Error:", error.response?.body || error.message);
-
+    
     // Clean up tokens on error
     try {
       await User.findOneAndUpdate(
@@ -391,8 +393,8 @@ exports.forgotPasswordmail = async (req, res, next) => {
         {
           $unset: {
             forgotPasswordToken: 1,
-            forgotPasswordExpiry: 1,
-          },
+            forgotPasswordExpiry: 1
+          }
         }
       );
     } catch (cleanupError) {
