@@ -6,10 +6,12 @@ const ArtistDetails = require("../models/artistDetails");
 const { text } = require("body-parser");
 const sgMail = require("@sendgrid/mail");
 const crypto = require("crypto");
-const { compileTemplate } = require("../utils/emailHelperFunction");
+const { compileTemplate, sendEmail } = require("../utils/emailHelperFunction");
 
-
-console.log('SendGrid API Key:', process.env.SENDGRID_API_KEY ? 'Set' : 'Missing');
+console.log(
+  "SendGrid API Key:",
+  process.env.SENDGRID_API_KEY ? "Set" : "Missing"
+);
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 //creating Refresh Token
@@ -330,7 +332,36 @@ exports.forgotPasswordmail = async (req, res, next) => {
       url = `http://localhost:5173/password/reset/${forgotToken}`;
     }
 
-    const messageBody = compileTemplate("forgotPassword", {
+    // const messageBody = compileTemplate("forgotPassword", {
+    //   user: {
+    //     firstName: user.firstName,
+    //     lastName: user.lastName,
+    //     email: email,
+    //   },
+    //   resetPasswordUrl: url,
+    //   expiryTime: forgotPasswordExpiry,
+    //   currentYear: new Date().getFullYear(),
+    //   supportEmail: process.env.SUPPORT_EMAIL || "artkya23@gmail.com",
+    //   websiteUrl: process.env.FRONTEND_URL || "https://artkya.com",
+    // });
+
+    const message = `Hello ${user.firstName},\n\nWe received a request to reset your password for your Artkya account.\n\nTo reset your password, click this link: ${url}\n\nThis link will expire in ${forgotPasswordExpiry} minutes.\n\nIf you didn't request this, please ignore this email.`;
+
+    // const msg = {
+    //   to: email,
+    //   from: "artkya23@gmail.com",
+    //   subject: "Reset Your Password - Artkya",
+    //   text: message,
+    //   html: messageBody,
+    // };
+
+    const sendEmailData = {
+      to:email,
+      from: "artkya23@gmail.com",
+      subject: "Reset Your Password - Artkya",
+      templateName:"forgotPassword",
+      text: message,
+      templateData:{
       user: {
         firstName: user.firstName,
         lastName: user.lastName,
@@ -341,19 +372,10 @@ exports.forgotPasswordmail = async (req, res, next) => {
       currentYear: new Date().getFullYear(),
       supportEmail: process.env.SUPPORT_EMAIL || "artkya23@gmail.com",
       websiteUrl: process.env.FRONTEND_URL || "https://artkya.com",
-    });
-
-    const message = `Hello ${user.firstName},\n\nWe received a request to reset your password for your Artkya account.\n\nTo reset your password, click this link: ${url}\n\nThis link will expire in ${forgotPasswordExpiry} minutes.\n\nIf you didn't request this, please ignore this email.`;
-
-    const msg = {
-      to: email,
-      from: "artkya23@gmail.com",
-      subject: "Reset Your Password - Artkya",
-      text: message,
-      html: messageBody,
+    },
     };
 
-    await sgMail.send(msg);
+    await sendEmail(sendEmailData);
     console.log("Forgot password email sent successfully to:", user.email);
     return res.status(200).json({
       success: true,
@@ -361,7 +383,7 @@ exports.forgotPasswordmail = async (req, res, next) => {
     });
   } catch (error) {
     console.error("SendGrid Error:", error.response?.body || error.message);
-    
+
     // Clean up tokens on error
     try {
       await User.findOneAndUpdate(
@@ -369,8 +391,8 @@ exports.forgotPasswordmail = async (req, res, next) => {
         {
           $unset: {
             forgotPasswordToken: 1,
-            forgotPasswordExpiry: 1
-          }
+            forgotPasswordExpiry: 1,
+          },
         }
       );
     } catch (cleanupError) {
