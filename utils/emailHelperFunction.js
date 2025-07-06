@@ -4,6 +4,8 @@ const handlebars = require("handlebars");
 const fs = require("fs");
 const path = require("path");
 
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
 // Setup nodemailer transport for SendGrid
 const transporter = nodemailer.createTransport({
   service: "SendGrid",
@@ -12,6 +14,7 @@ const transporter = nodemailer.createTransport({
     pass: process.env.SENDGRID_API_KEY,
   },
 });
+
 
 const compileTemplate = (templateName, data) => {
   try {
@@ -28,6 +31,7 @@ const compileTemplate = (templateName, data) => {
   }
 };
 
+
 // Method 1: Using SendGrid SDK directly
 async function sendEmailWithSendGrid(options) {
   try {
@@ -39,7 +43,7 @@ async function sendEmailWithSendGrid(options) {
 
     const msg = {
       to: to,
-      from: from || process.env.FROM_EMAIL,
+      from: from || process.env.EMAIL_USER,
       subject: subject,
       html: html,
       attachments: attachments || [],
