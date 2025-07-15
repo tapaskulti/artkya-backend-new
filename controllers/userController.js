@@ -565,25 +565,6 @@ exports.sendOrderDetails = async (req, res, next) => {
       hour12: true,
     });
 
-    console.log("admin email data===>", {
-      customer: {
-        fullName: fullName,
-        contactEmail: contactEmail,
-        contactNumber: contactNumber,
-        address: address,
-        description: description || null,
-      },
-      artwork: {
-        title: artworkTitle || "Artwork",
-        image: artworkImage || null,
-        id: artworkId || null,
-      },
-      orderDate: orderDate,
-      orderTime: orderTime,
-      supportEmail: process.env.SUPPORT_EMAIL || "support@artkya.com",
-      currentYear: new Date().getFullYear(),
-    });
-
     // Email data for admin/support team
     const adminEmailData = {
       to: "artkya23@gmail.com",
@@ -612,26 +593,6 @@ exports.sendOrderDetails = async (req, res, next) => {
 
     // Send email to admin/support team
     await sendEmail(adminEmailData); // or "nodemailer"
-
-    console.log("email data===>", {
-      customer: {
-        firstName: fullName.split(" ")[0], // Get first name
-        fullName: fullName,
-        email: contactEmail,
-        contactNumber: contactNumber,
-        address: address,
-        description: description || null,
-      },
-      artwork: {
-        title: artworkTitle || "Artwork",
-        image: artworkImage || null,
-      },
-      orderDate: orderDate,
-      orderTime: orderTime,
-      supportEmail: process.env.SUPPORT_EMAIL || "support@artkya.com",
-      currentYear: new Date().getFullYear(),
-      websiteUrl: process.env.FRONTEND_URL || "https://artkya.com",
-    });
 
     // Optional: Send confirmation email to customer
     const customerEmailData = {

@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const connectWithMongodb = async (req, res) => {
   try {
+    console.log("mongo url===>",process.env.MONGO_URL)
     mongoose.set("strictQuery", false);
     mongoose
       .connect(process.env.MONGO_URL)
