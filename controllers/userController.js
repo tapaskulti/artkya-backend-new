@@ -586,7 +586,6 @@ exports.sendOrderDetails = async (req, res, next) => {
 
     // Email data for admin/support team
     const adminEmailData = {
-      // to: process.env.ADMIN_EMAIL || process.env.SUPPORT_EMAIL || "admin@artkya.com",
       to: "artkya23@gmail.com",
       from: "artkya23@gmail.com",
       subject: `New Order Inquiry - ${artworkTitle || "Artwork"} - ${fullName}`,
