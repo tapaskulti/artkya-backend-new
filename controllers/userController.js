@@ -514,22 +514,23 @@ exports.uploadUserAvatar = async (req, res) => {
 
 exports.sendOrderDetails = async (req, res, next) => {
   try {
-    const { 
-      fullName, 
-      address, 
-      contactNumber, 
-      contactEmail, 
+    const {
+      fullName,
+      address,
+      contactNumber,
+      contactEmail,
       description,
       artworkTitle,
       artworkImage,
-      artworkId
+      artworkId,
     } = req.body;
 
     // Validate required fields
     if (!fullName || !address || !contactNumber || !contactEmail) {
       return res.status(400).json({
         success: false,
-        message: "Please fill in all required fields (Full Name, Address, Contact Number, Email)"
+        message:
+          "Please fill in all required fields (Full Name, Address, Contact Number, Email)",
       });
     }
 
@@ -538,30 +539,49 @@ exports.sendOrderDetails = async (req, res, next) => {
     if (!emailRegex.test(contactEmail)) {
       return res.status(400).json({
         success: false,
-        message: "Please enter a valid email address"
+        message: "Please enter a valid email address",
       });
     }
 
     // Validate phone number (basic validation)
     const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
-    if (!phoneRegex.test(contactNumber.replace(/\s+/g, ''))) {
+    if (!phoneRegex.test(contactNumber.replace(/\s+/g, ""))) {
       return res.status(400).json({
         success: false,
-        message: "Please enter a valid contact number"
+        message: "Please enter a valid contact number",
       });
     }
 
     // Prepare order details data
-    const orderDate = new Date().toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    const orderDate = new Date().toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
 
-    const orderTime = new Date().toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
+    const orderTime = new Date().toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    console.log("admin email data===>", {
+      customer: {
+        fullName: fullName,
+        contactEmail: contactEmail,
+        contactNumber: contactNumber,
+        address: address,
+        description: description || null,
+      },
+      artwork: {
+        title: artworkTitle || "Artwork",
+        image: artworkImage || null,
+        id: artworkId || null,
+      },
+      orderDate: orderDate,
+      orderTime: orderTime,
+      supportEmail: process.env.SUPPORT_EMAIL || "support@artkya.com",
+      currentYear: new Date().getFullYear(),
     });
 
     // Email data for admin/support team
@@ -569,77 +589,103 @@ exports.sendOrderDetails = async (req, res, next) => {
       // to: process.env.ADMIN_EMAIL || process.env.SUPPORT_EMAIL || "admin@artkya.com",
       to: "artkya23@gmail.com",
       from: "artkya23@gmail.com",
-      subject: `New Order Inquiry - ${artworkTitle || 'Artwork'} - ${fullName}`,
-      templateName: "AdminOrderDetails", // Make sure this template exists
+      subject: `New Order Inquiry - ${artworkTitle || "Artwork"} - ${fullName}`,
+      templateName: "AdminOrderDetails",
       templateData: {
         customer: {
           fullName: fullName,
           contactEmail: contactEmail,
           contactNumber: contactNumber,
           address: address,
-          description: description || null
+          description: description || null,
         },
         artwork: {
-          title: artworkTitle || 'Artwork',
+          title: artworkTitle || "Artwork",
           image: artworkImage || null,
-          id: artworkId || null
-        },
-        orderDate: orderDate,
-        orderTime: orderTime,
-        supportEmail: process.env.SUPPORT_EMAIL || "support@artkya.com",
-        currentYear: new Date().getFullYear()
-      }
-    };
-
-    // Send email to admin/support team
-    await sendEmail(adminEmailData); // or "nodemailer"
-
-    // Optional: Send confirmation email to customer
-    const customerEmailData = {
-      to: contactEmail,
-      from: "artkya23@gmail.com",
-      subject: `Order Inquiry Received - ${artworkTitle || 'Artwork'} - Artkya`,
-      templateName: "customerOrderConfirmation", // You'll need to create this template
-      templateData: {
-        customer: {
-          firstName: fullName.split(' ')[0], // Get first name
-          fullName: fullName,
-          email: contactEmail
-        },
-        artwork: {
-          title: artworkTitle || 'Artwork',
-          image: artworkImage || null
+          id: artworkId || null,
         },
         orderDate: orderDate,
         orderTime: orderTime,
         supportEmail: process.env.SUPPORT_EMAIL || "support@artkya.com",
         currentYear: new Date().getFullYear(),
-        websiteUrl: process.env.FRONTEND_URL || "https://artkya.com"
-      }
+      },
+    };
+
+    // Send email to admin/support team
+    await sendEmail(adminEmailData); // or "nodemailer"
+
+    console.log("email data===>", {
+      customer: {
+        firstName: fullName.split(" ")[0], // Get first name
+        fullName: fullName,
+        email: contactEmail,
+        contactNumber: contactNumber,
+        address: address,
+        description: description || null,
+      },
+      artwork: {
+        title: artworkTitle || "Artwork",
+        image: artworkImage || null,
+      },
+      orderDate: orderDate,
+      orderTime: orderTime,
+      supportEmail: process.env.SUPPORT_EMAIL || "support@artkya.com",
+      currentYear: new Date().getFullYear(),
+      websiteUrl: process.env.FRONTEND_URL || "https://artkya.com",
+    });
+
+    // Optional: Send confirmation email to customer
+    const customerEmailData = {
+      to: contactEmail,
+      from: "artkya23@gmail.com",
+      subject: `Order Inquiry Received - ${artworkTitle || "Artwork"} - Artkya`,
+      templateName: "customerOrderConfirmation", // You'll need to create this template
+      templateData: {
+        customer: {
+          firstName: fullName.split(" ")[0], // Get first name
+          fullName: fullName,
+          email: contactEmail,
+          contactNumber: contactNumber,
+          address: address,
+          description: description || null,
+        },
+        artwork: {
+          title: artworkTitle || "Artwork",
+          image: artworkImage || null,
+        },
+        orderDate: orderDate,
+        orderTime: orderTime,
+        supportEmail: process.env.SUPPORT_EMAIL,
+        currentYear: new Date().getFullYear(),
+        websiteUrl: process.env.FRONTEND_URL || "https://artkya.com",
+      },
     };
 
     // Send confirmation to customer
     await sendEmail(customerEmailData);
 
-    console.log("Order details email sent successfully to admin:", adminEmailData.to);
-    console.log("Confirmation email sent successfully to customer:", contactEmail);
+    console.log(
+      "Order details email sent successfully to admin:",
+      adminEmailData.to
+    );
+    console.log(
+      "Confirmation email sent successfully to customer:",
+      contactEmail
+    );
 
     return res.status(200).json({
       success: true,
-      message: "Order details sent successfully! We will contact you soon."
+      message: "Order details sent successfully! We will contact you soon.",
     });
-
   } catch (error) {
-    console.error("Email sending error:", error.response?.body || error.message);
+    console.error(
+      "Email sending error:",
+      error.response?.body || error.message
+    );
 
     return res.status(500).json({
       success: false,
-      message: "Failed to send order details. Please try again later."
+      message: "Failed to send order details. Please try again later.",
     });
   }
 };
-
-
-
-
-
