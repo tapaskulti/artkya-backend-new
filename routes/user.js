@@ -1,5 +1,5 @@
 const express = require("express");
-const { registerUser, login, getAccessToken, authUser, getSingleUserDetailsWithId, getAllUsers, updateUserAddress, logOut, uploadUserAvatar, forgotPasswordmail, resetPassword } = require("../controllers/userController");
+const { registerUser, login, getAccessToken, authUser, getSingleUserDetailsWithId, getAllUsers, updateUserAddress, logOut, uploadUserAvatar, forgotPasswordmail, resetPassword, sendOrderDetails } = require("../controllers/userController");
 const auth = require("../middlewares/auth");
 const router = express.Router();
 
@@ -15,4 +15,7 @@ router.route("/forgotPasswordmail").post(forgotPasswordmail)
 router.route("/resetPassword").post(resetPassword)
 router.route("/logOut").post(logOut)
 router.route("/uploadUserAvatar").patch(uploadUserAvatar)
+router.route("/send_order_details").post(sendOrderDetails)
+
+
 module.exports = router;

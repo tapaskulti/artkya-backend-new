@@ -2028,6 +2028,7 @@ async function getAdminDashboardStats() {
       },
       statusBreakdown: {},
       topArtworks: []
+      
     };
   }
 }

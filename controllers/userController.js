@@ -6,10 +6,12 @@ const ArtistDetails = require("../models/artistDetails");
 const { text } = require("body-parser");
 const sgMail = require("@sendgrid/mail");
 const crypto = require("crypto");
-const { compileTemplate } = require("../utils/emailHelperFunction");
+const { compileTemplate, sendEmail } = require("../utils/emailHelperFunction");
 
-
-console.log('SendGrid API Key:', process.env.SENDGRID_API_KEY ? 'Set' : 'Missing');
+console.log(
+  "SendGrid API Key:",
+  process.env.SENDGRID_API_KEY ? "Set" : "Missing"
+);
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 //creating Refresh Token
@@ -325,35 +327,35 @@ exports.forgotPasswordmail = async (req, res, next) => {
 
     let url;
     if (process.env.NODE_ENV === "production") {
-      url = `https://artkya.com/password/reset/${forgotToken}`;
+      url = `https://artkya.com/reset/${forgotToken}`;
     } else {
-      url = `http://localhost:5173/password/reset/${forgotToken}`;
+      url = `http://localhost:5173/reset/${forgotToken}`;
     }
-
-    const messageBody = compileTemplate("forgotPassword", {
-      user: {
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: email,
-      },
-      resetPasswordUrl: url,
-      expiryTime: forgotPasswordExpiry,
-      currentYear: new Date().getFullYear(),
-      supportEmail: process.env.SUPPORT_EMAIL || "artkya23@gmail.com",
-      websiteUrl: process.env.FRONTEND_URL || "https://artkya.com",
-    });
 
     const message = `Hello ${user.firstName},\n\nWe received a request to reset your password for your Artkya account.\n\nTo reset your password, click this link: ${url}\n\nThis link will expire in ${forgotPasswordExpiry} minutes.\n\nIf you didn't request this, please ignore this email.`;
 
-    const msg = {
+    const sendEmailData = {
       to: email,
       from: "artkya23@gmail.com",
       subject: "Reset Your Password - Artkya",
+      templateName: "forgotPassword",
       text: message,
-      html: messageBody,
+      templateData: {
+        user: {
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: email,
+        },
+        resetPasswordUrl: url,
+        expiryTime: forgotPasswordExpiry,
+        currentYear: new Date().getFullYear(),
+        supportEmail: process.env.SUPPORT_EMAIL || "artkya23@gmail.com",
+        websiteUrl: process.env.FRONTEND_URL || "https://artkya.com",
+      },
     };
 
-    await sgMail.send(msg);
+    await sendEmail(sendEmailData);
+
     console.log("Forgot password email sent successfully to:", user.email);
     return res.status(200).json({
       success: true,
@@ -361,7 +363,7 @@ exports.forgotPasswordmail = async (req, res, next) => {
     });
   } catch (error) {
     console.error("SendGrid Error:", error.response?.body || error.message);
-    
+
     // Clean up tokens on error
     try {
       await User.findOneAndUpdate(
@@ -369,8 +371,8 @@ exports.forgotPasswordmail = async (req, res, next) => {
         {
           $unset: {
             forgotPasswordToken: 1,
-            forgotPasswordExpiry: 1
-          }
+            forgotPasswordExpiry: 1,
+          },
         }
       );
     } catch (cleanupError) {
@@ -506,6 +508,144 @@ exports.uploadUserAvatar = async (req, res) => {
     return res.status(500).send({
       success: false,
       message: error.message,
+    });
+  }
+};
+
+exports.sendOrderDetails = async (req, res, next) => {
+  try {
+    const {
+      fullName,
+      address,
+      contactNumber,
+      contactEmail,
+      description,
+      artworkTitle,
+      artworkImage,
+      artworkId,
+    } = req.body;
+
+    // Validate required fields
+    if (!fullName || !address || !contactNumber || !contactEmail) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Please fill in all required fields (Full Name, Address, Contact Number, Email)",
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(contactEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid email address",
+      });
+    }
+
+    // Validate phone number (basic validation)
+    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+    if (!phoneRegex.test(contactNumber.replace(/\s+/g, ""))) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid contact number",
+      });
+    }
+
+    // Prepare order details data
+    const orderDate = new Date().toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const orderTime = new Date().toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    // Email data for admin/support team
+    const adminEmailData = {
+      to: "artkya23@gmail.com",
+      from: "artkya23@gmail.com",
+      subject: `New Order Inquiry - ${artworkTitle || "Artwork"} - ${fullName}`,
+      templateName: "AdminOrderDetails",
+      templateData: {
+        customer: {
+          fullName: fullName,
+          contactEmail: contactEmail,
+          contactNumber: contactNumber,
+          address: address,
+          description: description || null,
+        },
+        artwork: {
+          title: artworkTitle || "Artwork",
+          image: artworkImage || null,
+          id: artworkId || null,
+        },
+        orderDate: orderDate,
+        orderTime: orderTime,
+        supportEmail: process.env.SUPPORT_EMAIL || "support@artkya.com",
+        currentYear: new Date().getFullYear(),
+      },
+    };
+
+    // Send email to admin/support team
+    await sendEmail(adminEmailData); // or "nodemailer"
+
+    // Optional: Send confirmation email to customer
+    const customerEmailData = {
+      to: contactEmail,
+      from: "artkya23@gmail.com",
+      subject: `Order Inquiry Received - ${artworkTitle || "Artwork"} - Artkya`,
+      templateName: "customerOrderConfirmation", // You'll need to create this template
+      templateData: {
+        customer: {
+          firstName: fullName.split(" ")[0], // Get first name
+          fullName: fullName,
+          email: contactEmail,
+          contactNumber: contactNumber,
+          address: address,
+          description: description || null,
+        },
+        artwork: {
+          title: artworkTitle || "Artwork",
+          image: artworkImage || null,
+        },
+        orderDate: orderDate,
+        orderTime: orderTime,
+        supportEmail: process.env.SUPPORT_EMAIL,
+        currentYear: new Date().getFullYear(),
+        websiteUrl: process.env.FRONTEND_URL || "https://artkya.com",
+      },
+    };
+
+    // Send confirmation to customer
+    await sendEmail(customerEmailData);
+
+    console.log(
+      "Order details email sent successfully to admin:",
+      adminEmailData.to
+    );
+    console.log(
+      "Confirmation email sent successfully to customer:",
+      contactEmail
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Order details sent successfully! We will contact you soon.",
+    });
+  } catch (error) {
+    console.error(
+      "Email sending error:",
+      error.response?.body || error.message
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to send order details. Please try again later.",
     });
   }
 };

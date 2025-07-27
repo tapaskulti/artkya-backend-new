@@ -1,0 +1,185 @@
+{{!-- ==================== SIMPLE ORDER DETAILS TEMPLATE (templates/order-details.hbs) ==================== --}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Order Inquiry - Artkya</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f3f4f6;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border-radius: 0.375rem;
+            padding: 1.5rem;
+        }
+        .title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 1rem;
+        }
+        .subtitle {
+            color: #374151;
+            margin-bottom: 1.5rem;
+        }
+        .content {
+            color: #374151;
+            margin-bottom: 1.5rem;
+        }
+        .details-box {
+            background-color: #f9fafb;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            border: 1px solid #e5e7eb;
+        }
+        .detail-item {
+            font-size: 0.875rem;
+            color: #4b5563;
+            margin-bottom: 0.5rem;
+        }
+        .detail-item:last-child {
+            margin-bottom: 0;
+        }
+        .strong {
+            font-weight: 600;
+        }
+        .footer-text {
+            color: #374151;
+            margin-top: 1.5rem;
+        }
+        .signature {
+            color: #374151;
+            margin-top: 1rem;
+        }
+        .company-info {
+            margin-top: 1.5rem;
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        .link {
+            color: #3b82f6;
+            text-decoration: none;
+        }
+        .link:hover {
+            text-decoration: underline;
+        }
+        .artwork-section {
+            background-color: #f0f9ff;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            border: 1px solid #bae6fd;
+            margin: 1rem 0;
+        }
+        .artwork-title {
+            font-weight: 600;
+            color: #0c4a6e;
+            margin-bottom: 0.5rem;
+        }
+        .artwork-image {
+            max-width: 200px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 0.375rem;
+            margin: 0.5rem 0;
+        }
+        .urgent-banner {
+            background-color: #fef3c7;
+            border: 1px solid #f59e0b;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        .urgent-text {
+            color: #92400e;
+            font-weight: 600;
+        }
+        .action-buttons {
+            margin-top: 1rem;
+            text-align: center;
+        }
+        .action-button {
+            display: inline-block;
+            background-color: #3b82f6;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            text-decoration: none;
+            margin: 0 0.5rem;
+            font-weight: 500;
+        }
+        .action-button:hover {
+            background-color: #2563eb;
+        }
+        .action-button.secondary {
+            background-color: #6b7280;
+        }
+        .action-button.secondary:hover {
+            background-color: #4b5563;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="urgent-banner">
+            <div class="urgent-text">🚨 NEW CUSTOMER INQUIRY - ACTION REQUIRED</div>
+        </div>
+
+        <h1 class="title">New Order Inquiry Received</h1>
+        
+        <p class="subtitle">Hi <span class="strong">Admin</span>,</p>
+        
+        <p class="content">
+            A new customer has submitted an order inquiry through the website. Below are the customer details:
+        </p>
+
+        <div class="details-box">
+            <p class="detail-item"><strong>Customer Name:</strong> {{customer.fullName}}</p>
+            <p class="detail-item"><strong>Email ID:</strong> {{customer.contactEmail}}</p>
+            <p class="detail-item"><strong>Contact Number:</strong> {{customer.contactNumber}}</p>
+            <p class="detail-item"><strong>Address:</strong><br>{{customer.address}}</p>
+            {{#if customer.description}}
+            <p class="detail-item"><strong>Additional Notes:</strong><br>{{customer.description}}</p>
+            {{/if}}
+            <p class="detail-item"><strong>Inquiry Date:</strong> {{orderDate}} at {{orderTime}}</p>
+        </div>
+
+        {{#if artwork.title}}
+        <div class="artwork-section">
+            <div class="artwork-title">🎨 Artwork of Interest</div>
+            {{#if artwork.image}}
+            <img src="{{artwork.image}}" alt="{{artwork.title}}" class="artwork-image">
+            {{/if}}
+            <p class="detail-item"><strong>Title:</strong> {{artwork.title}}</p>
+            {{#if artwork.id}}
+            <p class="detail-item"><strong>Artwork ID:</strong> {{artwork.id}}</p>
+            {{/if}}
+        </div>
+        {{/if}}
+
+        <div class="action-buttons">
+            <a href="mailto:{{customer.contactEmail}}?subject=Re: Your Art Inquiry - {{artwork.title}}" class="action-button">📧 Email Customer</a>
+            <a href="tel:{{customer.contactNumber}}" class="action-button secondary">📞 Call Customer</a>
+        </div>
+
+        <p class="footer-text">
+            Please contact this customer within 24 hours to discuss their inquiry and provide pricing/availability information.
+        </p>
+
+        <p class="signature">Best regards,<br>Artkya Admin System</p>
+        
+        <div class="company-info">
+            <p>Artkya</p>
+            <p><a href="https://www.artkya.com" class="link">www.artkya.com</a> | {{supportEmail}}</p>
+        </div>
+    </div>
+</body>
+</html>
