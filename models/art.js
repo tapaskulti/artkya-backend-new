@@ -65,6 +65,10 @@ const artDetailsSchema = new mongoose.Schema(
 
     // Sales & Commission Details
     isOriginalSold: { type: Boolean, default: false },
+
+    // AvailableForSale // 👈 added this 26-10-25
+    isAvailableForSale: { type: Boolean, default: true }, 
+
     // Print copies tracking
     printCopies: [
       {
