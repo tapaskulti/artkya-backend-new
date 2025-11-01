@@ -109,10 +109,26 @@ exports.createArt = async (req, res) => {
     req.body.materials = JSON.parse(req.body?.materials || "[]");
     req.body.styles = JSON.parse(req.body?.styles || "[]");
 
-    req.body.priceDetails = {
-      price: basePrice,
-      offerPrice: parseFloat(req.body?.offerPrice) || 0,
-    };
+    // commented 26-10-25
+    // req.body.priceDetails = {
+    //   price: basePrice,
+    //   offerPrice: parseFloat(req.body?.offerPrice) || 0,
+    // };
+
+    // added 26-10-25
+    // Handle sale availability
+      const isAvailable = req.body.isAvailableForSale === "true" || req.body.isAvailableForSale === true;
+
+      // Set price to 0 if not for sale
+      const priceToSave = isAvailable ? parseFloat(req.body?.price) : 0;
+
+      req.body.isAvailableForSale = isAvailable;
+
+      req.body.priceDetails = {
+        price: priceToSave,
+        offerPrice: isAvailable ? parseFloat(req.body?.offerPrice) || 0 : 0,
+      };
+
 
     if (artistDetails.isArtApprovalReq === false) {
       const { commissionAmount, totalPrice } = calculateArtworkPricing(
@@ -124,7 +140,11 @@ exports.createArt = async (req, res) => {
       req.body.totalPrice = totalPrice;
       req.body.isPublished = true;
     }
-
+// console.log("Creating Art with:", {
+//   title: req.body.title,
+//   isAvailableForSale: req.body.isAvailableForSale,
+//   priceDetails: req.body.priceDetails,
+// }); 
     const creatingArt = await artDetailModel.create(req.body);
 
     // Parallel uploads for art images
@@ -314,7 +334,11 @@ exports.getAllArt = async (req, res) => {
     }
 
     if (criteria === "none") {
-      getAllArt = await artDetailModel.find().populate({
+      getAllArt = await artDetailModel
+      .find({
+        isPublished: true, // still only show published
+      })
+      .populate({
         path: "artist",
         select: {
           firstName: 1,
