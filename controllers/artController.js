@@ -17,108 +17,13 @@ function calculateArtworkPricing(basePrice, commissionPercent) {
   return { commissionAmount, totalPrice };
 }
 
-exports.createArtx = async (req, res) => {
-  try {
-    const artistId = req.body.artist;
-
-    console.log("artistId=====>",artistId)
-    const artistDetails = await artistDetailsModel.findOne({
-      userId: artistId,
-    });
-    if (!artistDetails) {
-      return res.status(404).json({ message: "Artist details not found" });
-    }
-
-    const commissionPercent = artistDetails.originalPercent || 20;
-    const basePrice = parseFloat(req.body?.price);
-
-    req.body.medium = JSON.parse(req.body?.medium || "[]");
-    req.body.materials = JSON.parse(req.body?.materials || "[]");
-    req.body.styles = JSON.parse(req.body?.styles || "[]");
-
-    req.body.priceDetails = {
-      price: basePrice,
-      offerPrice: parseFloat(req.body?.offerPrice) || 0,
-    };
-
-    if (artistDetails.isArtApprovalReq === false) {
-      const { commissionAmount, totalPrice } = calculateArtworkPricing(
-        basePrice,
-        commissionPercent
-      );
-      req.body.commissionPercent = commissionPercent;
-      req.body.commissionAmount = commissionAmount;
-      req.body.totalPrice = totalPrice;
-      req.body.isPublished = true;
-    }
-
-    const creatingArt = await artDetailModel.create(req.body);
-
-    // Parallel uploads for art images
-    let artUploads = [];
-    if (req.files?.images && Array.isArray(req.files.images)) {
-      artUploads = req.files.images.map((image, index) =>
-        cloudinary.v2.uploader
-          .upload(image.tempFilePath, { folder: "Arts_Images" })
-          .then((uploaded) => ({
-            id: uploaded.public_id,
-            secure_url: uploaded.secure_url,
-            order: index,
-          }))
-      );
-    }
-
-    // Upload thumbnail separately
-    let thumbnailUpload = null;
-    if (req.files?.thumbnail) {
-      thumbnailUpload = cloudinary.v2.uploader.upload(
-        req.files.thumbnail.tempFilePath,
-        {
-          folder: "Arts_Images",
-        }
-      );
-    }
-
-    const [artImages, thumbnail] = await Promise.all([
-      Promise.all(artUploads),
-      thumbnailUpload,
-    ]);
-
-    // Save art images if any
-    if (artImages.length > 0) {
-      await artDetailModel.findByIdAndUpdate(creatingArt._id, {
-        $push: { art: { $each: artImages } },
-      });
-    }
-
-    // Save thumbnail
-    if (thumbnail) {
-      await artDetailModel.findByIdAndUpdate(creatingArt._id, {
-        thumbnail: {
-          id: thumbnail.public_id,
-          secure_url: thumbnail.secure_url,
-        },
-      });
-    }
-
-    // Update user with art reference (non-blocking)
-    await userModel.findByIdAndUpdate(artistId, {
-      $push: { art: creatingArt._id },
-    });
-
-    res.status(201).send({
-      success: true,
-      message: "Art Created Successfully",
-    });
-  } catch (error) {
-    return res.status(500).send({ success: false, message: error.message });
-  }
-};
 exports.createArt = async (req, res) => {
   try {
     const artistId = req.body.artist;
 
-    console.log("artistId=====>", artistId);
+    console.log("🎯 BACKEND - Received Form Data:");
+    console.log("makeOffer:", req.body.makeOffer);
+    console.log("isAvailableForSale:", req.body.isAvailableForSale);
 
     const artistDetails = await artistDetailsModel.findOne({
       userId: artistId,
@@ -128,9 +33,14 @@ exports.createArt = async (req, res) => {
       return res.status(404).json({ message: "Artist details not found" });
     }
 
-    // Handle price only if provided
+    // ✅ PROPERLY HANDLE THE FIELDS
+    const makeOffer = req.body.makeOffer === 'true' || req.body.makeOffer === true;
+    const isAvailableForSale = req.body.isAvailableForSale === 'true' || req.body.isAvailableForSale === true;
     const basePrice = req.body.price ? parseFloat(req.body.price) : 0;
-    const offerPrice = req.body.offerPrice ? parseFloat(req.body.offerPrice) : 0;
+
+    console.log("🎯 BACKEND - Processed Values:");
+    console.log("makeOffer (processed):", makeOffer);
+    console.log("isAvailableForSale (processed):", isAvailableForSale);
 
     const commissionPercent = artistDetails.originalPercent || 20;
 
@@ -139,34 +49,76 @@ exports.createArt = async (req, res) => {
     req.body.materials = JSON.parse(req.body?.materials || "[]");
     req.body.styles = JSON.parse(req.body?.styles || "[]");
 
-    // Always store price details (even if 0)
+    // Always store price details
     req.body.priceDetails = {
       price: basePrice,
-      offerPrice: offerPrice,
+      offerPrice: req.body.offerPrice || basePrice,
     };
 
-    // ✅ Only calculate commission/totalPrice if price is given
-    if (artistDetails.isArtApprovalReq === false && basePrice > 0) {
-      const { commissionAmount, totalPrice } = calculateArtworkPricing(
-        basePrice,
-        commissionPercent
-      );
-      req.body.commissionPercent = commissionPercent;
-      req.body.commissionAmount = commissionAmount;
-      req.body.totalPrice = totalPrice;
-      req.body.isPublished = true;
+    // ✅ STORE THE PROCESSED VALUES
+    req.body.makeOffer = makeOffer;
+    req.body.isAvailableForSale = isAvailableForSale;
+
+    console.log("🎯 BACKEND - Final values before save:");
+    console.log("makeOffer:", req.body.makeOffer);
+    console.log("isAvailableForSale:", req.body.isAvailableForSale);
+
+    // Your existing pricing logic...
+    if (isAvailableForSale) {
+      if (makeOffer) {
+        // SCENARIO 1: Make Offer Only (no fixed price)
+        req.body.commissionPercent = commissionPercent;
+        req.body.commissionAmount = 0;
+        req.body.totalPrice = 0;
+        req.body.isPublished = true;
+        req.body.isForSale = false; // Not available for direct purchase
+        req.body.makeOffer = true; // Ensure it's true
+        console.log("✅ Artwork created as MAKE OFFER ONLY");
+      } else if (basePrice > 0) {
+        // SCENARIO 2: Fixed Price (available for sale)
+        const { commissionAmount, totalPrice } = calculateArtworkPricing(
+          basePrice,
+          commissionPercent
+        );
+        req.body.commissionPercent = commissionPercent;
+        req.body.commissionAmount = commissionAmount;
+        req.body.totalPrice = totalPrice;
+        req.body.isPublished = artistDetails.isArtApprovalReq === false;
+        req.body.isForSale = true; // Available for direct purchase
+        req.body.makeOffer = false; // Not accepting offers
+        console.log("✅ Artwork created as FIXED PRICE");
+      } else {
+        // SCENARIO 3: Not available
+        req.body.commissionPercent = commissionPercent;
+        req.body.commissionAmount = 0;
+        req.body.totalPrice = 0;
+        req.body.isPublished = false;
+        req.body.isForSale = false;
+        req.body.makeOffer = false;
+        console.log("❌ Artwork created as NOT AVAILABLE");
+      }
     } else {
-      // If price is missing or approval is required, still allow saving
+      // SCENARIO 4: Not for sale at all (display only)
       req.body.commissionPercent = commissionPercent;
       req.body.commissionAmount = 0;
       req.body.totalPrice = 0;
-      req.body.isPublished = false;
+      req.body.isPublished = true; // Still publish for display
+      req.body.isForSale = false;
+      req.body.makeOffer = false;
+      console.log("📝 Artwork created as DISPLAY ONLY");
     }
 
-    // Create artwork entry
+    // ✅ Create artwork entry
     const creatingArt = await artDetailModel.create(req.body);
 
-    // Upload multiple art images (if any)
+    console.log("🎯 BACKEND - Saved artwork:");
+    console.log("_id:", creatingArt._id);
+    console.log("makeOffer:", creatingArt.makeOffer);
+    console.log("isAvailableForSale:", creatingArt.isAvailableForSale);
+    console.log("isForSale:", creatingArt.isForSale);
+    console.log("totalPrice:", creatingArt.totalPrice);
+
+    // Rest of your image upload code remains the same...
     let artUploads = [];
     if (req.files?.images && Array.isArray(req.files.images)) {
       artUploads = req.files.images.map((image, index) =>
@@ -180,7 +132,6 @@ exports.createArt = async (req, res) => {
       );
     }
 
-    // Upload thumbnail
     let thumbnailUpload = null;
     if (req.files?.thumbnail) {
       thumbnailUpload = cloudinary.v2.uploader.upload(
@@ -196,14 +147,12 @@ exports.createArt = async (req, res) => {
       thumbnailUpload,
     ]);
 
-    // Save art images
     if (artImages.length > 0) {
       await artDetailModel.findByIdAndUpdate(creatingArt._id, {
         $push: { art: { $each: artImages } },
       });
     }
 
-    // Save thumbnail
     if (thumbnail) {
       await artDetailModel.findByIdAndUpdate(creatingArt._id, {
         thumbnail: {
@@ -213,93 +162,28 @@ exports.createArt = async (req, res) => {
       });
     }
 
-    // Link artwork to artist (non-blocking)
     await userModel.findByIdAndUpdate(artistId, {
       $push: { art: creatingArt._id },
     });
 
     res.status(201).send({
       success: true,
-      message: "Art Created Successfully (price optional)",
+      message: "Art Created Successfully",
+      artwork: {
+        _id: creatingArt._id,
+        makeOffer: creatingArt.makeOffer,
+        isAvailableForSale: creatingArt.isAvailableForSale,
+        isForSale: creatingArt.isForSale,
+        totalPrice: creatingArt.totalPrice,
+        isPublished: creatingArt.isPublished
+      }
     });
   } catch (error) {
-    console.error("Error creating art:", error);
+    console.error("❌ Error creating art:", error);
     return res.status(500).send({ success: false, message: error.message });
   }
 };
 
-
-exports.createDraftx = async (req, res) => {
-  try {
-    let uploadedImage;
-    let thumbnailFile;
-
-    // Generate a random number
-    const randomNumber = crypto.randomBytes(4).readUInt32BE(0);
-
-    // Format the ID
-    const uniqueId = `DR-${randomNumber}`;
-
-    req.body.draftId = uniqueId;
-    const creatingArt = await draftModel.create(req.body);
-
-    if (req.files?.images) {
-      console.log("req.files?.images------->", req.files?.images);
-      req.files?.images?.forEach(async (singleImage) => {
-        uploadedImage = await cloudinary.v2.uploader.upload(
-          singleImage.tempFilePath,
-          { folder: "Arts_Images" }
-        );
-        console.log("uploadedImage------->", uploadedImage);
-
-        if (uploadedImage) {
-          const updateImage = await draftModel.findOneAndUpdate(
-            { _id: creatingArt?._id },
-            {
-              $push: {
-                art: {
-                  id: uploadedImage?.public_id,
-                  secure_url: uploadedImage?.secure_url,
-                },
-              },
-            }
-          );
-        }
-
-        return res.status(201).send({
-          success: true,
-          message: "Draft Created Successfully",
-        });
-      });
-    }
-
-    if (req.files?.thumbnail) {
-      thumbnailFile = await cloudinary.v2.uploader.upload(
-        req.files.thumbnail.tempFilePath,
-        { folder: "Arts_Images" }
-      );
-    } else {
-      return res.status(400).send({ message: "Thumbnail mot found" });
-    }
-
-    console.log("thumbnail------->", req.files.thumbnail);
-    console.log("thumbnailFile------->", thumbnailFile);
-
-    const imageThumbnail = thumbnailFile && {
-      id: thumbnailFile.public_id,
-      secure_url: thumbnailFile.secure_url,
-    };
-
-    if (imageThumbnail) {
-      await draftModel.findOneAndUpdate(
-        { _id: creatingArt?._id },
-        { thumbnail: imageThumbnail }
-      );
-    }
-  } catch (error) {
-    return res.status(500).send({ success: false, message: error.message });
-  }
-};
 exports.createDraft = async (req, res) => {
   try {
     // Generate unique draft ID
@@ -309,6 +193,7 @@ exports.createDraft = async (req, res) => {
 
     // Optional price handling (drafts can skip price)
     req.body.price = req.body.price ? parseFloat(req.body.price) : 0;
+    req.body.makeOffer = req.body.makeOffer === 'true';
 
     // Create draft entry first
     const creatingArt = await draftModel.create(req.body);
@@ -361,7 +246,6 @@ exports.createDraft = async (req, res) => {
       });
     }
 
-    // ✅ Final success response (only once)
     return res.status(201).send({
       success: true,
       message: "Draft Created Successfully",
@@ -377,14 +261,13 @@ exports.createDraft = async (req, res) => {
 exports.getAllArt = async (req, res) => {
   try {
     let getAllArt;
-    // const { date, incresingPrice, decreasingPrice } = req.query;
     const { criteria, searchCriteria, searchInput } = req.query;
 
     console.log(criteria, searchCriteria, searchInput);
 
     if (criteria === "newToOld" && searchCriteria === "none") {
       getAllArt = await artDetailModel
-        .find()
+        .find({ isPublished: true })
         .sort({
           createdAt: 1,
         })
@@ -399,9 +282,9 @@ exports.getAllArt = async (req, res) => {
 
     if (criteria === "incresingPrice" && searchCriteria === "none") {
       getAllArt = await artDetailModel
-        .find()
+        .find({ isPublished: true })
         .sort({
-          price: 1,
+          "priceDetails.price": 1,
         })
         .populate({
           path: "artist",
@@ -414,9 +297,9 @@ exports.getAllArt = async (req, res) => {
 
     if (criteria === "decreasingPrice" && searchCriteria === "none") {
       getAllArt = await artDetailModel
-        .find()
+        .find({ isPublished: true })
         .sort({
-          price: -1,
+          "priceDetails.price": -1,
         })
         .populate({
           path: "artist",
@@ -428,7 +311,7 @@ exports.getAllArt = async (req, res) => {
     }
 
     if (criteria === "none") {
-      getAllArt = await artDetailModel.find().populate({
+      getAllArt = await artDetailModel.find({ isPublished: true }).populate({
         path: "artist",
         select: {
           firstName: 1,
@@ -441,14 +324,37 @@ exports.getAllArt = async (req, res) => {
       console.log("called");
       getAllArt = await artDetailModel.find({
         title: { $regex: searchInput, $options: "i" },
+        isPublished: true
+      }).populate({
+        path: "artist",
+        select: {
+          firstName: 1,
+          lastName: 1,
+        },
       });
     }
 
-    // if ((searchCriteria === "Artist" && searchInput!=="")) {
-    //   getAllArt = await artDetailModel.find({
-    //     // title: { $regex: artTitle, $options: "i" },
-    //   });
-    // }
+    if (searchCriteria === "Artist" && searchInput !== "") {
+      const users = await userModel.find({
+        $or: [
+          { firstName: { $regex: searchInput, $options: "i" } },
+          { lastName: { $regex: searchInput, $options: "i" } }
+        ]
+      });
+      
+      const artistIds = users.map(user => user._id);
+      
+      getAllArt = await artDetailModel.find({
+        artist: { $in: artistIds },
+        isPublished: true
+      }).populate({
+        path: "artist",
+        select: {
+          firstName: 1,
+          lastName: 1,
+        },
+      });
+    }
 
     return res.status(200).send({ success: true, data: getAllArt });
   } catch (error) {
@@ -474,15 +380,20 @@ exports.getArtById = async (req, res) => {
 };
 
 // Searching By ART AND ARTIST
-
 exports.getArtByName = async (req, res) => {
   try {
     const { artByName } = req.query;
     let findArt;
     if (artByName) {
-      // findArt = await artDetailModel.aggregate([ { $match: { title: artByName} } ])
       findArt = await artDetailModel.find({
         title: { $regex: artByName, $options: "i" },
+        isPublished: true
+      }).populate({
+        path: "artist",
+        select: {
+          firstName: 1,
+          lastName: 1,
+        },
       });
     }
 
@@ -515,7 +426,6 @@ exports.getArtByArtist = async (req, res) => {
 };
 
 // filter
-
 exports.filterArt = async (req, res) => {
   try {
     let filteredArts;
@@ -533,7 +443,7 @@ exports.filterArt = async (req, res) => {
       featuredartist,
     } = req.body;
 
-    let query = {};
+    let query = { isPublished: true };
     console.log(
       "req.body-------=>>>",
       style,
@@ -552,27 +462,25 @@ exports.filterArt = async (req, res) => {
       query.styles = { $in: style };
     }
 
-    if (subject) {
+    if (subject && subject.length > 0) {
       query.subject = { $in: subject };
     }
 
-    if (minPrice && minPrice) {
-      query.price = { $gte: minPrice, $lte: maxPrice };
+    if (minPrice && maxPrice) {
+      query["priceDetails.price"] = { $gte: minPrice, $lte: maxPrice };
     }
 
-    if (medium && style.medium > 0) {
+    if (medium && medium.length > 0) {
       query.medium = { $in: medium };
     }
 
-    if (material && style.material > 0) {
+    if (material && material.length > 0) {
       query.materials = { $in: material };
     }
 
-    if (orientation && style.orientation > 0) {
+    if (orientation && orientation.length > 0) {
       query.orientation = { $in: orientation };
     }
-
-    // console.log("query==========>",query);
 
     filteredArts = await artDetailModel.find(query);
 
@@ -584,21 +492,19 @@ exports.filterArt = async (req, res) => {
 
     if (sortingCriteria === "incresingPrice") {
       filteredArts = await artDetailModel.find(query).sort({
-        price: 1,
+        "priceDetails.price": 1,
       });
     }
 
     if (sortingCriteria === "decreasingPrice") {
       filteredArts = await artDetailModel.find(query).sort({
-        price: -1,
+        "priceDetails.price": -1,
       });
     }
 
     if (sortingCriteria === "none") {
       filteredArts = await artDetailModel.find(query);
     }
-
-    // console.log("filteredArts==========>",filteredArts);
 
     if (filteredArts.length == 0) {
       return res.status(400).send({ success: false, message: "No art found" });
@@ -633,7 +539,7 @@ exports.payment = async (req, res) => {
 // update art
 exports.updateArt = async (req, res) => {
   try {
-    const artDetail = await ArtModel.findById({ _id: req.query.artId });
+    const artDetail = await artDetailModel.findById({ _id: req.query.artId });
 
     if (!artDetail) {
       return res.status(400).send("Art doesn't exist");
@@ -653,17 +559,17 @@ exports.updateArt = async (req, res) => {
 // delete art
 exports.deleteArt = async (req, res) => {
   try {
-    await ArtModel.findByIdAndDelete({ _id: req.query.artId });
+    await artDetailModel.findByIdAndDelete({ _id: req.query.artId });
     return res.status(200).send("Art Deleted");
   } catch (err) {
-    return res.status(500).send({ success: false, message: error.message });
+    return res.status(500).send({ success: false, message: err.message });
   }
 };
 
 exports.newFilterArt = async (req, res) => {
   try {
     let filteredArts;
-    const { sortingCriteria, searchCriteria, searchInput } = req.query;
+    const { sortingCriteria, searchCriteria, searchInput, page = 1, limit = 12 } = req.query;
     const {
       style,
       subject,
@@ -677,18 +583,18 @@ exports.newFilterArt = async (req, res) => {
       featuredartist,
     } = req.body;
 
-    let query = {isPublished: true};
+    let query = { isPublished: true };
     let searchquery = {};
 
     console.log("body==========>", req.body);
 
     // Handle the body-based filters
     if (style && style.length > 0) {
-      query.styles = { $in: style.map((s) => new RegExp(s, "i")) }; // Case insensitive match
+      query.styles = { $in: style.map((s) => new RegExp(s, "i")) };
     }
 
-    if (subject) {
-      query.subject = { $in: subject.map((s) => new RegExp(s, "i")) }; // Case insensitive match
+    if (subject && subject.length > 0) {
+      query.subject = { $in: subject.map((s) => new RegExp(s, "i")) };
     }
 
     if (minPrice && maxPrice) {
@@ -696,30 +602,30 @@ exports.newFilterArt = async (req, res) => {
     }
 
     if (medium && medium.length > 0) {
-      query.medium = { $in: medium.map((m) => new RegExp(m, "i")) }; // Case insensitive match
+      query.medium = { $in: medium.map((m) => new RegExp(m, "i")) };
     }
 
     if (material && material.length > 0) {
-      query.materials = { $in: material.map((m) => new RegExp(m, "i")) }; // Case insensitive match
+      query.materials = { $in: material.map((m) => new RegExp(m, "i")) };
     }
 
     if (orientation && orientation.length > 0) {
-      query.orientation = { $in: orientation.map((o) => new RegExp(o, "i")) }; // Case insensitive match
+      query.orientation = { $in: orientation.map((o) => new RegExp(o, "i")) };
     }
 
     if (artistCountry && artistCountry.length > 0) {
       query.artistCountry = {
         $in: artistCountry.map((c) => new RegExp(c, "i")),
-      }; // Case insensitive match
+      };
     }
 
     if (featuredartist && featuredartist.length > 0) {
       query.featuredArtist = {
         $in: featuredartist.map((f) => new RegExp(f, "i")),
-      }; // Case insensitive match
+      };
     }
 
-    // Sorting logic (fixing price sort field)
+    // Sorting logic
     const sortOption =
       sortingCriteria === "newToOld"
         ? { createdAt: -1 }
@@ -727,22 +633,22 @@ exports.newFilterArt = async (req, res) => {
         ? { "priceDetails.price": 1 }
         : sortingCriteria === "priceHighLow"
         ? { "priceDetails.price": -1 }
-        : null; // Set to null if no sorting criteria is provided
+        : null;
 
     // Handle search by Art title or Artist name
     if (searchCriteria === "Art" && searchInput) {
-      searchquery.title = { $regex: searchInput, $options: "i" }; // Case insensitive search in title
+      searchquery.title = { $regex: searchInput, $options: "i" };
     }
 
     if (searchCriteria === "Artist" && searchInput) {
-      searchquery.artistFullName = { $regex: searchInput, $options: "i" }; // Case insensitive search for artist name
+      searchquery.artistFullName = { $regex: searchInput, $options: "i" };
     }
 
     // Check if there are no filters or search applied
     const noFiltersApplied =
       !searchCriteria &&
       (!style || style.length === 0) &&
-      !subject &&
+      (!subject || subject.length === 0) &&
       (!medium || medium.length === 0) &&
       (!minPrice || !maxPrice) &&
       (!material || material.length === 0) &&
@@ -751,17 +657,32 @@ exports.newFilterArt = async (req, res) => {
       (!artistCountry || artistCountry.length === 0) &&
       (!featuredartist || featuredartist.length === 0);
 
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    let totalArts = 0;
+
     // If no filters are applied, return all arts using a simple find query with sorting
     if (noFiltersApplied) {
-      filteredArts = await artDetailModel
+      totalArts = await artDetailModel.countDocuments({ isPublished: true });
+      
+      let artsQuery = artDetailModel
         .find({ isPublished: true })
         .populate({
           path: "artist",
           select: { firstName: 1, lastName: 1 },
-        })
-        .sort(sortOption); // Default sorting if no sort criteria
+        });
 
-      console.log("All arts returned (no filters)==========>", filteredArts);
+      if (sortOption) {
+        artsQuery = artsQuery.sort(sortOption);
+      }
+
+      filteredArts = await artsQuery
+        .skip(skip)
+        .limit(limitNum);
+
+      console.log("All arts returned (no filters)==========>", filteredArts.length);
     } else {
       // Use aggregation if there are filters or search criteria
       const pipeline = [
@@ -772,7 +693,7 @@ exports.newFilterArt = async (req, res) => {
         },
         {
           $lookup: {
-            from: "users", // Artist collection name
+            from: "users",
             localField: "artist",
             foreignField: "_id",
             as: "artist",
@@ -786,7 +707,7 @@ exports.newFilterArt = async (req, res) => {
         },
         {
           $lookup: {
-            from: "artistdetails", // Join with artist details to get country info
+            from: "artistdetails",
             localField: "artist._id",
             foreignField: "userId",
             as: "artistDetails",
@@ -814,8 +735,8 @@ exports.newFilterArt = async (req, res) => {
         },
         {
           $match: {
-            ...query, // Apply the filters
-            ...searchquery, // Apply the search query
+            ...query,
+            ...searchquery,
           },
         },
       ];
@@ -824,20 +745,29 @@ exports.newFilterArt = async (req, res) => {
         pipeline.push({
           $match: {
             artistCountry: {
-              $in: artistCountry.map((c) => new RegExp(c, "i")), // Case insensitive match for country
+              $in: artistCountry.map((c) => new RegExp(c, "i")),
             },
           },
         });
       }
+
+      // Count total matching documents
+      const countPipeline = [...pipeline];
+      countPipeline.push({ $count: "total" });
+      const countResult = await artDetailModel.aggregate(countPipeline);
+      totalArts = countResult.length > 0 ? countResult[0].total : 0;
 
       // Only add the $sort stage if sorting criteria is provided
       if (sortOption) {
         pipeline.push({ $sort: sortOption });
       }
 
+      // Add pagination
+      pipeline.push({ $skip: skip }, { $limit: limitNum });
+
       filteredArts = await artDetailModel.aggregate(pipeline);
 
-      console.log("Filtered arts with filters==========>", filteredArts);
+      console.log("Filtered arts with filters==========>", filteredArts.length);
     }
 
     // If no results are found
@@ -845,7 +775,19 @@ exports.newFilterArt = async (req, res) => {
       return res.status(400).send({ success: false, message: "No art found" });
     }
 
-    return res.status(200).send({ success: true, data: filteredArts });
+    const totalPages = Math.ceil(totalArts / limitNum);
+
+    return res.status(200).send({ 
+      success: true, 
+      data: filteredArts,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: totalPages,
+        totalArts: totalArts,
+        hasNext: pageNum < totalPages,
+        hasPrev: pageNum > 1
+      }
+    });
   } catch (error) {
     return res.status(500).send({ success: false, message: error.message });
   }
