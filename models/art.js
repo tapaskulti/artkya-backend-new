@@ -44,6 +44,21 @@ const artDetailsSchema = new mongoose.Schema(
     depth: {
       type: String,
     },
+    
+    // ✅ ADD THESE CRITICAL FIELDS:
+    makeOffer: {
+      type: Boolean,
+      default: false
+    },
+    isAvailableForSale: {
+      type: Boolean,
+      default: false
+    },
+    isForSale: {
+      type: Boolean,
+      default: false
+    },
+
     priceDetails: {
       minPrice: { type: Number },
       price: { type: Number },
@@ -65,10 +80,6 @@ const artDetailsSchema = new mongoose.Schema(
 
     // Sales & Commission Details
     isOriginalSold: { type: Boolean, default: false },
-
-    // AvailableForSale // 👈 added this 26-10-25
-    isAvailableForSale: { type: Boolean, default: true }, 
-
     // Print copies tracking
     printCopies: [
       {
