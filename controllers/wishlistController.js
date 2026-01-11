@@ -1,151 +1,197 @@
 const wishlistModel = require("../models/wishlist");
 const ArtModel = require("../models/art");
 
+/* ================= CREATE WISHLIST ================= */
 exports.createWishlist = async (req, res) => {
   try {
     const { userId } = req.query;
 
-    const checkWishlistAvailable = await wishlistModel.findOne({
-      userId: userId,
-    });
-
-    if (checkWishlistAvailable) {
-      return res.status(400).send({
-        status: false,
-        message: "Wishlist For This User Is Already Present",
+    const checkWishlist = await wishlistModel.findOne({ userId });
+    if (checkWishlist) {
+      return res.status(400).json({
+        success: false,
+        message: "Wishlist for this user already exists",
       });
     }
-    req.body.userId = userId;
-    const wishlistCreated = await wishlistModel.create(req.body);
 
-    return res.status(201).send({
+    const wishlist = await wishlistModel.create({
+      userId,
+      arts: [],
+      totalItems: 0,
+    });
+
+    return res.status(201).json({
       success: true,
-      message: "Wishlist Created Successfully",
-      data: wishlistCreated,
+      message: "Wishlist created successfully",
+      data: wishlist,
     });
   } catch (error) {
-    return res.status(500).send({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Add art to wishlist
-
+/* ================= ADD TO WISHLIST ================= */
 exports.addToWishlist = async (req, res) => {
   try {
-    const { artId, userId } = req.query;
-    let updateWishList, totalItems;
-    const findWishlist = await wishlistModel.findOne({ userId });
-    // const updateWishList = await wishlistModel.findOneAndUpdate({userId},{
-    //   $push:{arts:artId}
-    // })
+    const { userId, artId } = req.body;
 
-    if (findWishlist.arts.includes(artId)) {
-      return res.status(400).send({
+    // 1️⃣ Validation
+    if (!userId || !artId) {
+      return res.status(400).json({
         success: false,
-        message: "Art Already Present In Wishlist",
+        message: "userId and artId are required",
       });
-    } else {
-      updateWishList = findWishlist?.arts.push(artId);
     }
 
-    if (updateWishList) {
-      totalItems = await findWishlist.arts.length;
-      findWishlist.totalItems = totalItems;
+    // 2️⃣ Check art exists
+    const art = await ArtModel.findById(artId);
+    if (!art) {
+      return res.status(404).json({
+        success: false,
+        message: "Art not found",
+      });
     }
 
-    console.log(findWishlist);
-    await findWishlist.save();
+    // 3️⃣ Find or create wishlist
+    let wishlist = await wishlistModel.findOne({ userId });
 
-    const artAdded = res.status(200).send({
+    if (!wishlist) {
+      wishlist = await wishlistModel.create({
+        userId,
+        arts: [],
+        totalItems: 0,
+      });
+    }
+
+    // 4️⃣ Prevent duplicate art
+    const exists = wishlist.arts.some(
+      (id) => id.toString() === artId.toString()
+    );
+
+    if (exists) {
+      return res.status(400).json({
+        success: false,
+        message: "Art already in wishlist",
+      });
+    }
+
+    // 5️⃣ Add art & update totals
+    wishlist.arts.push(artId);
+    wishlist.totalItems = wishlist.arts.length;
+
+    await wishlist.save();
+
+    // 6️⃣ Update art wishlisted flag
+    await ArtModel.findByIdAndUpdate(artId, { wishlisted: true });
+
+    return res.status(200).json({
       success: true,
-      data: totalItems,
-      message: "Art Addded Successfully",
+      message: "Art added to wishlist successfully",
+      data: wishlist,
     });
-
-    if (artAdded) {
-       await ArtModel.findOneAndUpdate(
-        { _id: artId },
-        { wishlisted: true },
-        { new: true }
-      );
-    }
-    return;
   } catch (error) {
-    return res.status(500).send({ success: false, message: error.message });
+    console.error("Add to wishlist error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
-exports.removeFromWishList = async (req, res) => {
+/* ================= REMOVE FROM WISHLIST ================= */
+exports.removeFromWishlist = async (req, res) => {
   try {
-    const { artId, userId } = req.query;
-    let totalItems;
-    const findWishlist = await wishlistModel.findOne({ userId });
+    const { userId, artId } = req.body;
 
-    findWishlist.arts = findWishlist.arts.filter((art) => {
-      console.log(art.toString());
-      return art.toString() !== artId.toString();
-    });
-
-    totalItems = await findWishlist.arts.length;
-    findWishlist.totalItems = totalItems;
-
-    console.log(findWishlist);
-    console.log(totalItems);
-
-    await findWishlist.save();
-
-    const artRemoved = res.status(200).send({
-      success: true,
-      data: totalItems,
-      message: "Art Removed Successfully",
-    });
-
-    if (artRemoved) {
-      return await ArtModel.findOne(
-        { _id: artId },
-        { wishlisted: false },
-        { new: true }
-      );
+    // 1️⃣ Find wishlist
+    const wishlist = await wishlistModel.findOne({ userId });
+    if (!wishlist) {
+      return res.status(404).json({
+        success: false,
+        message: "Wishlist not found",
+      });
     }
-    return;
+
+    // 2️⃣ Check art exists
+    const art = await ArtModel.findById(artId);
+    if (!art) {
+      return res.status(404).json({
+        success: false,
+        message: "Art not found",
+      });
+    }
+
+    // 3️⃣ Remove art
+    wishlist.arts = wishlist.arts.filter(
+      (id) => id.toString() !== artId.toString()
+    );
+
+    wishlist.totalItems = wishlist.arts.length;
+    await wishlist.save();
+
+    // 4️⃣ Update art wishlisted flag
+    await ArtModel.findByIdAndUpdate(artId, { wishlisted: false });
+
+    return res.status(200).json({
+      success: true,
+      message: "Art removed from wishlist",
+      data: wishlist,
+    });
   } catch (error) {
-    return res.status(500).send({ success: false, message: error.message });
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
-// Get WishList Of A Certain User
-
+/* ================= GET WISHLIST BY USER ================= */
 exports.wishlistByUserId = async (req, res) => {
   try {
     const { userId } = req.query;
 
-    const findWishlit = await wishlistModel.findOne({ userId }).populate({
-      path: "arts",
-      select: {
-        thumbnail: 1,
-        wishlisted: 1,
-        subject: 1,
-        title: 1,
-        price: 1,
-        height: 1,
-        depth: 1,
-        width: 1,
-        artist: 1,
-        priceDetails: 1,
-      },
-      // options: {
-      //   skip: 5,
-      //   limit: 10,
-      // },
-    });
+    const wishlist = await wishlistModel
+      .findOne({ userId })
+      .populate("arts");
 
-    return res.status(200).send({
+    return res.status(200).json({
       success: true,
-      data: findWishlit,
+      data: wishlist,
     });
   } catch (error) {
-    return res.status(500).send({ success: false, message: error.message });
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
+/* ================= CLEAR WISHLIST ================= */
+exports.clearWishlistByUserId = async (req, res) => {
+  try {
+    const { userId } = req.query;
 
+    const wishlist = await wishlistModel.findOne({ userId });
+    if (!wishlist) {
+      return res.status(404).json({
+        success: false,
+        message: "Wishlist not found",
+      });
+    }
+
+    wishlist.arts = [];
+    wishlist.totalItems = 0;
+    await wishlist.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Wishlist cleared successfully",
+      data: wishlist,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};

@@ -1,4 +1,6 @@
 const cartModel = require("../models/cart");
+const ArtModel = require("../models/art"); // <-- IMPORTANT
+
 
 exports.createCart = async (req, res) => {
   try {
@@ -29,85 +31,144 @@ exports.createCart = async (req, res) => {
 
 exports.addToCart = async (req, res) => {
   try {
-    const { artId, userId, artPrice } = req.query;
-    let totalItems;
-    const findCart = await cartModel
-      .findOne({ userId })
-      // .populate("userId")
-      .populate({
-        path: "arts",
-        // select:{_id:1,price:1}
-      });
+    const { userId, artId } = req.body;
 
-    if (findCart?.arts.toString().includes(artId.toString())) {
-      return res.status(400).send({
+    // 1️⃣ Validation
+    if (!userId || !artId) {
+      return res.status(400).json({
         success: false,
-        message: "Art Already Present In Cart",
+        message: "userId and artId are required",
       });
-    } else {
-      findCart?.arts.push(artId);
     }
 
-    totalItems = await findCart.arts.length;
+    // 2️⃣ Get art price securely
+    const art = await ArtModel.findById(artId);
+    if (!art) {
+      return res.status(404).json({
+        success: false,
+        message: "Art not found",
+      });
+    }
 
-    findCart.totalItems = totalItems;
+    // 3️⃣ Find or create cart
+    let cart = await cartModel.findOne({ userId });
 
-    findCart.totalPrice = parseInt(findCart.totalPrice) + parseInt(artPrice);
+    if (!cart) {
+      cart = await cartModel.create({
+        userId,
+        arts: [],
+        totalItems: 0,
+        totalPrice: 0,
+      });
+    }
 
-    console.log(findCart, totalItems);
+    // 4️⃣ Prevent duplicate art
+    const exists = cart.arts.some(
+      (id) => id.toString() === artId.toString()
+    );
 
-    await findCart.save();
+    if (exists) {
+      return res.status(400).json({
+        success: false,
+        message: "Art already in cart",
+      });
+    }
 
-    return res.status(200).send({
+    // 5️⃣ Add art & update totals
+    cart.arts.push(artId);
+    cart.totalItems = cart.arts.length;
+    cart.totalPrice += art.totalPrice;
+
+    await cart.save();
+
+    return res.status(200).json({
       success: true,
-      data: findCart,
-      message: "Art Addded Successfully",
+      message: "Art added to cart successfully",
+      data: cart,
     });
   } catch (error) {
-    console.log(error);
-    return res.status(500).send({ success: false, message: error.message });
+    console.error("Add to cart error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
+
+
 
 // Remove Items From Cart
 exports.removeFromCart = async (req, res) => {
   try {
-    const { artId, userId, artPrice } = req.query;
+    const { userId, artId } = req.body;
 
-    console.log(artId, userId, artPrice);
-
-    const findCart = await cartModel.findOne({ userId });
-
-    console.log(findCart.arts);
-
-    findCart.arts = findCart.arts.filter((singleArt) => {
-      console.log(singleArt.toString() == artId.toString());
-      return singleArt.toString() !== artId.toString();
-    });
-
-    console.log(findCart.arts);
-
-    totalItems = await findCart.arts.length;
-    findCart.totalItems = totalItems;
-
-    console.log(totalItems);
-    console.log(findCart.totalPrice);
-
-    findCart.totalPrice = parseInt(findCart.totalPrice) - parseInt(artPrice);
-    if(findCart.totalPrice<0){
-      findCart.totalPrice = 0
+    const cart = await cartModel.findOne({ userId });
+    if (!cart) {
+      return res.status(404).json({
+        success: false,
+        message: "Cart not found",
+      });
     }
 
-    console.log(findCart.totalPrice);
+    const art = await artModel.findById(artId);
+    if (!art) {
+      return res.status(404).json({
+        success: false,
+        message: "Art not found",
+      });
+    }
 
-    await findCart.save();
-    return res.status(200).send({
+    cart.arts = cart.arts.filter(
+      (id) => id.toString() !== artId
+    );
+
+    cart.totalItems = cart.arts.length;
+    cart.totalPrice = Math.max(0, cart.totalPrice - art.totalPrice);
+
+    await cart.save();
+
+    return res.status(200).json({
       success: true,
-      data: totalItems,
-      message: "Art Removed Successfully",
+      message: "Art removed from cart",
+      data: cart,
     });
+
   } catch (error) {
-    return res.status(500).send({ success: false, message: error.message });
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+exports.removeFromCart = async (req, res) => {
+  try {
+    const { userId, artId } = req.body;
+
+    const cart = await cartModel.findOne({ userId });
+    if (!cart) {
+      return res.status(404).json({ success: false, message: "Cart not found" });
+    }
+
+    const art = await ArtModel.findById(artId);
+    if (!art) {
+      return res.status(404).json({ success: false, message: "Art not found" });
+    }
+
+    cart.arts = cart.arts.filter(id => id.toString() !== artId);
+    cart.totalItems = cart.arts.length;
+    cart.totalPrice = Math.max(0, cart.totalPrice - art.totalPrice);
+
+    await cart.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Art removed from cart",
+      data: cart
+    });
+
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
